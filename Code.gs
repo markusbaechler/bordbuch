@@ -209,7 +209,14 @@ function getSheet() {
 
 function rowToObject(row) {
   const obj = {};
-  HEADERS.forEach((h, i) => obj[h] = row[i]);
+  const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  HEADERS.forEach((h, i) => {
+    let v = row[i];
+    // Datum IMMER als reines YYYY-MM-DD ausgeben – egal ob Zelle Text oder echtes Datum ist.
+    // Verhindert Tagesverschiebung durch UTC-Umwandlung beim JSON-Versand.
+    if (h === 'date' && v instanceof Date) v = Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+    obj[h] = v;
+  });
   return obj;
 }
 
