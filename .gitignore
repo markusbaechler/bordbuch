@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build-Output
+dist/
+dist-ssr/
+
+# TypeScript inkrementeller Build-Cache
+*.tsbuildinfo
+
+# Lokale Umgebung – NIEMALS committen (enthält echtes Token/URL)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

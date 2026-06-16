@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+
+/*
+  Design-Tokens aus dem freigegebenen Mockup (bordbuch-mockup.html).
+  Tag-/Nacht-Umschaltung via data-mode am <html>. Beide Modi setzen dieselben
+  CSS-Variablen neu; Tailwind-Utilities greifen über @theme darauf zu.
+*/
+
+:root {
+  /* TAG-Modus (Sonnenlicht, hoher Kontrast) */
+  --bg: #e6edf2;
+  --amb: #cfdae2;
+  --surface: #ffffff;
+  --surface-2: #f2f6f9;
+  --ink: #0a2233;
+  --ink-2: #52708a;
+  --ink-3: #86a0b4;
+  --line: #d5e0e8;
+  --accent: #ff5a1f; /* Signal-Orange, CTA */
+  --teal: #0c7c82; /* Wasser / aktiv */
+  --teal-soft: #e2f1f2;
+  --good: #15935e;
+  --danger: #d33333;
+  --bezel: #c4d2dc;
+  --shadow: 0 1px 0 rgba(10, 34, 51, 0.04), 0 8px 24px rgba(10, 34, 51, 0.08);
+}
+
+html[data-mode='night'] {
+  --bg: #04101a;
+  --amb: #020a12;
+  --surface: #0e2030;
+  --surface-2: #0a1a28;
+  --ink: #dceaf2;
+  --ink-2: #6e8a9c;
+  --ink-3: #4c6678;
+  --line: #1b3346;
+  --accent: #ff6a35;
+  --teal: #2bc4c4;
+  --teal-soft: #0c2a30;
+  --good: #2fbf7e;
+  --danger: #ff6b6b;
+  --bezel: #16344a;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* Tokens als Tailwind-Farben/Fonts verfügbar machen (text-ink, bg-surface …). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-amb: var(--amb);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-good: var(--good);
+  --color-danger: var(--danger);
+
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: radial-gradient(120% 90% at 50% -10%, var(--bg), var(--amb) 70%) fixed;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  transition: background 0.35s ease;
+}
+
+/* Mono-Zahlen immer tabellarisch (Anzeigen lesen sich wie ein Instrument). */
+.tabnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sichtbarer Keyboard-Fokus auf allen interaktiven Elementen (nur bei Tastatur). */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* Maus-/Touch-Klick erzeugt keinen störenden Ring. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Bewegung respektieren: Animationen/Transitions praktisch abschalten. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

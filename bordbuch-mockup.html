@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bordbuch · Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* TAG-Modus (sonnenlicht, hoher kontrast) */
+    --bg:#E6EDF2; --amb:#cfdae2;
+    --surface:#FFFFFF; --surface-2:#F2F6F9;
+    --ink:#0A2233; --ink-2:#52708A; --ink-3:#86A0B4;
+    --line:#D5E0E8;
+    --accent:#FF5A1F;      /* signal-orange, CTA */
+    --teal:#0C7C82;        /* wasser / aktiv */
+    --teal-soft:#E2F1F2;
+    --good:#15935E;
+    --bezel:#C4D2DC;
+    --shadow:0 1px 0 rgba(10,34,51,.04), 0 8px 24px rgba(10,34,51,.08);
+  }
+  html[data-mode="night"]{
+    --bg:#04101A; --amb:#020a12;
+    --surface:#0E2030; --surface-2:#0A1A28;
+    --ink:#DCEAF2; --ink-2:#6E8a9C; --ink-3:#4C6678;
+    --line:#1B3346;
+    --accent:#FF6A35;
+    --teal:#2BC4C4;
+    --teal-soft:#0C2A30;
+    --good:#2FBF7E;
+    --bezel:#16344A;
+    --shadow:0 8px 28px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 90% at 50% -10%, var(--bg), var(--amb) 70%) fixed;
+    min-height:100vh;
+    font-family:'Inter',system-ui,sans-serif;
+    color:var(--ink);
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:24px 14px 40px;
+    transition:background .35s ease;
+  }
+  /* ---------- Geräte-Rahmen ---------- */
+  .device{
+    width:100%; max-width:392px;
+    background:var(--surface);
+    border-radius:30px;
+    box-shadow:var(--shadow), 0 0 0 9px var(--bezel), 0 0 0 11px rgba(0,0,0,.06);
+    overflow:hidden;
+    position:relative;
+    display:flex; flex-direction:column;
+    height:min(820px, 92vh);
+    transition:background .35s ease;
+  }
+  /* ---------- Topbar ---------- */
+  .topbar{
+    padding:16px 18px 12px;
+    display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+  }
+  .brand{flex:1; line-height:1}
+  .brand .name{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; letter-spacing:.14em;
+    font-size:21px; color:var(--ink);
+  }
+  .brand .sub{
+    font-size:11px; color:var(--ink-2); letter-spacing:.04em;
+    margin-top:3px; display:flex; align-items:center; gap:6px;
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+  /* tag/nacht */
+  .toggle{
+    border:1px solid var(--line); background:var(--surface-2);
+    border-radius:999px; padding:5px; display:flex; gap:2px; cursor:pointer;
+  }
+  .toggle span{
+    font-size:11px; font-weight:600; letter-spacing:.05em;
+    padding:5px 9px; border-radius:999px; color:var(--ink-3);
+    display:flex; align-items:center; gap:4px;
+  }
+  html[data-mode="day"] .toggle .t-day{background:var(--accent);color:#fff}
+  html[data-mode="night"] .toggle .t-night{background:var(--teal);color:#04101A}
+
+  /* ---------- Screen-Bereich ---------- */
+  .screens{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch}
+  .screen{display:none; padding:18px 16px 24px}
+  .screen.active{display:block; animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  .eyebrow{
+    font-family:'Barlow Condensed',sans-serif;
+    text-transform:uppercase; letter-spacing:.18em;
+    font-size:12px; color:var(--ink-2); font-weight:600;
+    margin-bottom:12px; display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* ---------- Instrumenten-Kacheln (signature) ---------- */
+  .gauges{display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-bottom:22px}
+  .gauge{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:14px; padding:14px 14px 13px;
+    position:relative; overflow:hidden;
+  }
+  .gauge::before{content:"";position:absolute;top:0;left:14px;right:14px;height:2px;
+    background:linear-gradient(90deg,var(--teal),transparent);border-radius:2px}
+  .gauge.hot::before{background:linear-gradient(90deg,var(--accent),transparent)}
+  .gauge .lab{
+    font-size:10px; text-transform:uppercase; letter-spacing:.12em;
+    color:var(--ink-2); font-weight:600; margin-bottom:8px;
+  }
+  .gauge .val{
+    font-family:'JetBrains Mono',monospace; font-weight:700;
+    font-size:30px; color:var(--ink); line-height:1; font-variant-numeric:tabular-nums;
+  }
+  .gauge .unit{font-size:12px;color:var(--ink-2);font-weight:500;margin-left:3px;font-family:'Inter'}
+  .gauge .tick{position:absolute;bottom:11px;right:13px;font-size:10px;color:var(--ink-3);
+    font-family:'JetBrains Mono';letter-spacing:.04em}
+
+  /* ---------- Liste / Törns ---------- */
+  .search{
+    display:flex; align-items:center; gap:9px;
+    background:var(--surface-2); border:1px solid var(--line);
+    border-radius:12px; padding:11px 13px; margin-bottom:14px;
+    color:var(--ink-3); font-size:14px;
+  }
+  .search svg{flex-shrink:0}
+  .filterrow{display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap}
+  .chip{
+    font-size:12px; font-weight:600; padding:7px 13px; border-radius:999px;
+    border:1px solid var(--line); color:var(--ink-2); background:var(--surface);
+    cursor:pointer; white-space:nowrap;
+  }
+  .chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+  .trip{
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; padding:14px 15px; margin-bottom:11px;
+    cursor:pointer; transition:transform .12s ease, border-color .12s;
+    position:relative;
+  }
+  .trip:active{transform:scale(.99)}
+  .trip .date{font-family:'JetBrains Mono';font-size:11px;color:var(--accent);
+    font-weight:700;letter-spacing:.06em;margin-bottom:7px}
+  .trip .route{
+    font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:600;
+    color:var(--ink); display:flex; align-items:center; gap:9px; line-height:1.05;
+  }
+  .trip .arrow{color:var(--teal);font-size:15px}
+  .trip .meta{
+    margin-top:10px; display:flex; gap:16px;
+    font-family:'JetBrains Mono'; font-size:12px; color:var(--ink-2);
+    font-variant-numeric:tabular-nums;
+  }
+  .trip .meta b{color:var(--ink);font-weight:700}
+  .trip .crew{
+    margin-top:9px; font-size:11px; color:var(--ink-3);
+    display:flex; align-items:center; gap:5px;
+  }
+  .trip .go{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--ink-3)}
+
+  /* ---------- Detailansicht ---------- */
+  .backbtn{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2);
+    font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px}
+  .detail-route{font-family:'Barlow Condensed';font-size:30px;font-weight:700;
+    line-height:1.05;margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+  .detail-route .arrow{color:var(--teal)}
+  .detail-date{font-family:'JetBrains Mono';font-size:12px;color:var(--accent);
+    font-weight:700;letter-spacing:.05em;margin-bottom:20px}
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:18px}
+  .dcell{background:var(--surface);padding:14px 15px}
+  .dcell .k{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);
+    font-weight:600;margin-bottom:6px}
+  .dcell .v{font-family:'JetBrains Mono';font-size:19px;font-weight:700;color:var(--ink);
+    font-variant-numeric:tabular-nums}
+  .dcell .v small{font-size:11px;color:var(--ink-2);font-weight:500}
+  .note{background:var(--teal-soft);border-radius:12px;padding:13px 15px;font-size:13px;
+    color:var(--ink);line-height:1.5;margin-bottom:18px}
+  .note .k{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);
+    font-weight:700;margin-bottom:6px}
+  .rowbtns{display:flex;gap:10px}
+  .btn{flex:1;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;
+    font-family:'Inter';cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-ghost{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+  .btn-danger{background:transparent;color:#D33; border:1px solid var(--line)}
+
+  /* ---------- Formular (Neu) ---------- */
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--ink-2);font-weight:600;margin-bottom:7px}
+  .field .input{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;
+    padding:13px 14px;font-size:15px;color:var(--ink);font-family:'Inter';display:flex;
+    align-items:center;justify-content:space-between}
+  .field .input.mono{font-family:'JetBrains Mono';font-weight:600;font-variant-numeric:tabular-nums}
+  .field .input .ph{color:var(--ink-3)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .hint{font-size:11px;color:var(--teal);margin-top:6px;display:flex;align-items:center;gap:5px;font-weight:500}
+  .calc{background:var(--teal-soft);border-radius:11px;padding:12px 14px;margin:6px 0 16px;
+    display:flex;justify-content:space-between;align-items:center}
+  .calc .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--teal);font-weight:700}
+  .calc .v{font-family:'JetBrains Mono';font-weight:700;font-size:17px;color:var(--ink)}
+
+  /* ---------- Bottom-Nav ---------- */
+  .nav{
+    display:flex; border-top:1px solid var(--line); background:var(--surface);
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+  }
+  .nav button{
+    flex:1; background:none; border:none; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:7px 0; color:var(--ink-3); font-size:11px; font-weight:600;
+    font-family:'Inter'; border-radius:12px;
+  }
+  .nav button.on{color:var(--accent)}
+  .nav .fab{
+    color:#fff; background:var(--accent); margin:-22px 6px 0; max-width:62px;
+    border-radius:18px; box-shadow:0 8px 18px rgba(255,90,31,.4); padding:11px 0 9px;
+  }
+  .nav .fab svg{margin-bottom:1px}
+  /* status / toast demo */
+  .toast{position:absolute;left:16px;right:16px;bottom:82px;background:var(--good);color:#fff;
+    border-radius:12px;padding:13px 15px;font-size:13px;font-weight:600;display:flex;align-items:center;
+    gap:9px;box-shadow:0 8px 22px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);
+    transition:.3s;pointer-events:none}
+  .toast.show{opacity:1;transform:none}
+  .caption{font-size:11px;color:var(--ink-3);text-align:center;margin-top:14px;line-height:1.5}
+
+  /* ---------- Dashboard: Trend-Panel ---------- */
+  .panel{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;
+    padding:14px 15px 12px;margin-bottom:22px}
+  .panel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .panel-head .lab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--ink-2);font-weight:600}
+  .panel-head .now{font-family:'JetBrains Mono';font-weight:700;font-size:15px;color:var(--ink)}
+  .panel-head .now small{font-size:10px;color:var(--ink-2);font-weight:500}
+  .chart{display:flex;align-items:flex-end;gap:7px;height:78px;position:relative;padding-top:2px}
+  .chart .avgline{position:absolute;left:0;right:0;border-top:1.5px dashed var(--accent);opacity:.7}
+  .chart .avgline span{position:absolute;right:0;top:-16px;font-family:'JetBrains Mono';
+    font-size:9px;color:var(--accent);font-weight:700;background:var(--surface-2);padding:0 3px}
+  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%}
+  .bar i{width:100%;max-width:16px;background:var(--teal);border-radius:3px 3px 0 0;display:block}
+  .bar.peak i{background:var(--accent)}
+  .bar em{font-family:'JetBrains Mono';font-size:8px;color:var(--ink-3);font-style:normal}
+
+  /* ---------- Saison-Fortschritt ---------- */
+  .season{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:13px 15px;margin-bottom:11px}
+  .season .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .season .row .lab{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);font-weight:600}
+  .season .row .v{font-family:'JetBrains Mono';font-size:12px;color:var(--ink);font-weight:700}
+  .season .track{height:7px;background:var(--surface-2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+  .season .fill{height:100%;width:63%;background:linear-gradient(90deg,var(--teal),var(--accent));border-radius:99px}
+
+  /* ---------- Top-Hafen-Streifen ---------- */
+  .strip{display:flex;gap:11px;margin-bottom:22px}
+  .strip .box{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .strip .box .lab{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);font-weight:600;margin-bottom:7px}
+  .strip .box .big{font-family:'Barlow Condensed';font-size:18px;font-weight:700;color:var(--ink);line-height:1}
+  .strip .box .small{font-family:'JetBrains Mono';font-size:11px;color:var(--ink-3);margin-top:5px}
+</style>
+</head>
+<body>
+<div class="device">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="name">BORDBUCH</div>
+      <div class="sub"><span class="dot"></span> MY «Seeluft» · Zürichsee</div>
+    </div>
+    <div class="toggle" onclick="toggleMode()">
+      <span class="t-day">☀ Tag</span>
+      <span class="t-night">☾ Nacht</span>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="screens" id="screens">
+
+    <!-- 1) DASHBOARD -->
+    <section class="screen active" id="s-dash">
+      <div class="eyebrow">Saison 2026</div>
+      <div class="gauges">
+        <div class="gauge">
+          <div class="lab">Gesamtdistanz</div>
+          <div class="val">487<span class="unit">km</span></div>
+          <div class="tick">12 törns</div>
+        </div>
+        <div class="gauge">
+          <div class="lab">Betriebsstunden</div>
+          <div class="val">63.4<span class="unit">h</span></div>
+          <div class="tick">motor</div>
+        </div>
+        <div class="gauge hot">
+          <div class="lab">Ø Verbrauch</div>
+          <div class="val">11.8<span class="unit">l/h</span></div>
+          <div class="tick">berechnet</div>
+        </div>
+        <div class="gauge">
+          <div class="lab">Törns</div>
+          <div class="val">12</div>
+          <div class="tick">diese saison</div>
+        </div>
+      </div>
+
+      <!-- Verbrauchs-Trend (signature mini-chart) -->
+      <div class="panel">
+        <div class="panel-head">
+          <span class="lab">Verbrauch je Törn · l/h</span>
+          <span class="now">13.1<small> letzte</small></span>
+        </div>
+        <div class="chart">
+          <div class="avgline" style="bottom:48%"><span>Ø 11.8</span></div>
+          <div class="bar"><i style="height:52%"></i><em>10.4</em></div>
+          <div class="bar"><i style="height:58%"></i><em>11.0</em></div>
+          <div class="bar peak"><i style="height:71%"></i><em>12.6</em></div>
+          <div class="bar"><i style="height:50%"></i><em>10.9</em></div>
+          <div class="bar"><i style="height:55%"></i><em>11.4</em></div>
+          <div class="bar"><i style="height:46%"></i><em>10.1</em></div>
+          <div class="bar"><i style="height:60%"></i><em>11.7</em></div>
+          <div class="bar peak"><i style="height:74%"></i><em>13.1</em></div>
+        </div>
+      </div>
+
+      <!-- Saison-Fortschritt + Top-Hafen -->
+      <div class="season">
+        <div class="row"><span class="lab">Saison Apr – Okt</span><span class="v">63.4 / 100 h</span></div>
+        <div class="track"><div class="fill"></div></div>
+      </div>
+      <div class="strip">
+        <div class="box">
+          <div class="lab">Häufigster Hafen</div>
+          <div class="big">Rapperswil</div>
+          <div class="small">5 anläufe</div>
+        </div>
+        <div class="box">
+          <div class="lab">Längster Törn</div>
+          <div class="big">51 km</div>
+          <div class="small">24.05.</div>
+        </div>
+      </div>
+
+      <div class="eyebrow">Letzte Fahrt</div>
+      <div class="trip" onclick="showDetail()">
+        <div class="date">SA 14.06.2026</div>
+        <div class="route">Wollishofen <span class="arrow">→</span> Rapperswil</div>
+        <div class="meta"><span><b>42</b> km</span><span><b>2.9</b> h</span><span><b>13.1</b> l/h</span></div>
+        <div class="crew">⚓ Crew: M. Keller, S. Brunner</div>
+        <svg class="go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </section>
+
+    <!-- 2) LOGBUCH / LISTE -->
+    <section class="screen" id="s-list">
+      <div class="eyebrow">Logbuch</div>
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        Hafen, Crew oder Datum suchen
+      </div>
+      <div class="filterrow">
+        <span class="chip on">Alle</span>
+        <span class="chip">Dieser Monat</span>
+        <span class="chip">Längste</span>
+        <span class="chip">Mit Gästen</span>
+      </div>
+
+      <div class="trip" onclick="showDetail()">
+        <div class="date">SA 14.06.2026</div>
+        <div class="route">Wollishofen <span class="arrow">→</span> Rapperswil</div>
+        <div class="meta"><span><b>42</b> km</span><span><b>2.9</b> h</span><span><b>13.1</b> l/h</span></div>
+      </div>
+      <div class="trip" onclick="showDetail()">
+        <div class="date">SO 08.06.2026</div>
+        <div class="route">Wollishofen <span class="arrow">→</span> Stäfa</div>
+        <div class="meta"><span><b>28</b> km</span><span><b>1.7</b> h</span><span><b>10.9</b> l/h</span></div>
+      </div>
+      <div class="trip" onclick="showDetail()">
+        <div class="date">FR 30.05.2026</div>
+        <div class="route">Wollishofen <span class="arrow">→</span> Au</div>
+        <div class="meta"><span><b>19</b> km</span><span><b>1.2</b> h</span><span><b>11.4</b> l/h</span></div>
+      </div>
+      <div class="trip" onclick="showDetail()">
+        <div class="date">SA 24.05.2026</div>
+        <div class="route">Wollishofen <span class="arrow">→</span> Pfäffikon</div>
+        <div class="meta"><span><b>51</b> km</span><span><b>3.4</b> h</span><span><b>12.6</b> l/h</span></div>
+      </div>
+    </section>
+
+    <!-- 3) DETAIL -->
+    <section class="screen" id="s-detail">
+      <div class="backbtn" onclick="show('list')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+        Logbuch
+      </div>
+      <div class="detail-route">Wollishofen <span class="arrow">→</span> Rapperswil</div>
+      <div class="detail-date">SAMSTAG · 14.06.2026 · 09:40 – 16:20</div>
+
+      <div class="dgrid">
+        <div class="dcell"><div class="k">Distanz</div><div class="v">42 <small>km</small></div></div>
+        <div class="dcell"><div class="k">Fahrzeit</div><div class="v">2.9 <small>h</small></div></div>
+        <div class="dcell"><div class="k">Betriebsst. Start</div><div class="v">298.2 <small>h</small></div></div>
+        <div class="dcell"><div class="k">Betriebsst. Ende</div><div class="v">301.1 <small>h</small></div></div>
+        <div class="dcell"><div class="k">Treibstoff</div><div class="v">38 <small>l</small></div></div>
+        <div class="dcell"><div class="k">Ø Verbrauch</div><div class="v">13.1 <small>l/h</small></div></div>
+      </div>
+
+      <div class="note">
+        <div class="k">Bemerkung</div>
+        Leichter Nordwind, Welle bis 2. Tankstopp Rapperswil. Bordnetz-Sicherung getauscht.
+      </div>
+
+      <div class="rowbtns" style="margin-bottom:11px">
+        <button class="btn btn-primary" onclick="show('new')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          Bearbeiten
+        </button>
+        <button class="btn btn-danger" onclick="toast('Törn gelöscht')">Löschen</button>
+      </div>
+    </section>
+
+    <!-- 4) NEU / FORMULAR -->
+    <section class="screen" id="s-new">
+      <div class="backbtn" onclick="show('dash')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+        Abbrechen
+      </div>
+      <div class="eyebrow">Neuer Törn</div>
+
+      <div class="two">
+        <div class="field"><label>Von</label><div class="input">Wollishofen</div></div>
+        <div class="field"><label>Nach</label><div class="input"><span class="ph">Zielhafen…</span></div></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Start</label><div class="input mono">09:40</div></div>
+        <div class="field"><label>Ende</label><div class="input mono"><span class="ph">--:--</span></div></div>
+      </div>
+
+      <div class="two">
+        <div class="field">
+          <label>Betriebsst. Start</label>
+          <div class="input mono">301.1</div>
+          <div class="hint">↺ Letzter Stand übernommen</div>
+        </div>
+        <div class="field"><label>Betriebsst. Ende</label><div class="input mono"><span class="ph">0.0</span></div></div>
+      </div>
+
+      <div class="calc">
+        <span class="k">Verbrauch berechnet</span>
+        <span class="v">— l/h</span>
+      </div>
+
+      <div class="two">
+        <div class="field"><label>Distanz (km)</label><div class="input mono"><span class="ph">0</span></div></div>
+        <div class="field"><label>Treibstoff (l)</label><div class="input mono"><span class="ph">0</span></div></div>
+      </div>
+
+      <div class="field"><label>Crew</label><div class="input"><span class="ph">Namen, kommagetrennt</span></div></div>
+      <div class="field"><label>Bemerkung</label><div class="input" style="min-height:64px;align-items:flex-start"><span class="ph">Wetter, Wartung, Notizen…</span></div></div>
+
+      <button class="btn btn-primary" style="width:100%" onclick="toast('Törn gespeichert')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        Törn speichern
+      </button>
+      <div class="caption">Gespeichert in Google Sheets · Mockup zeigt nur die Optik</div>
+    </section>
+
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    <span id="toast-msg">Gespeichert</span>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <button class="on" id="n-dash" onclick="show('dash')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>
+      Dashboard
+    </button>
+    <button id="n-list" onclick="show('list')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      Logbuch
+    </button>
+    <button class="fab" onclick="show('new')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+      Neu
+    </button>
+  </nav>
+
+</div>
+
+<script>
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('s-'+id).classList.add('active');
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('on'));
+    if(id==='dash') document.getElementById('n-dash').classList.add('on');
+    if(id==='list') document.getElementById('n-list').classList.add('on');
+    document.getElementById('screens').scrollTop=0;
+  }
+  function showDetail(){ show('detail'); }
+  function toggleMode(){
+    const h=document.documentElement;
+    h.dataset.mode = h.dataset.mode==='night' ? 'day' : 'night';
+  }
+  let tt;
+  function toast(msg){
+    const t=document.getElementById('toast');
+    document.getElementById('toast-msg').textContent=msg;
+    t.classList.add('show'); clearTimeout(tt);
+    tt=setTimeout(()=>t.classList.remove('show'),1800);
+  }
+  document.documentElement.dataset.mode='day';
+</script>
+</body>
+</html>
