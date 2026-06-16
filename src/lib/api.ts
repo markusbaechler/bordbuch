@@ -54,6 +54,21 @@ function asNumber(v: unknown): number | null {
 }
 
 /**
+ * Datum robust auf lokales YYYY-MM-DD bringen. Das Sheet liefert teils ein
+ * UTC-ISO-Datetime (z. B. "2017-03-31T22:00:00.000Z" = lokal 01.04.) – dann die
+ * LOKALEN Komponenten verwenden, damit der vom User gemeinte Tag erhalten bleibt.
+ */
+function asDate(v: unknown): string {
+  const s = String(v ?? '')
+  if (!s) return ''
+  if (!s.includes('T')) return s.slice(0, 10) // schon YYYY-MM-DD
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s.slice(0, 10)
+  const p = (n: number) => (n < 10 ? `0${n}` : String(n))
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+/**
  * Sheet liefert Felder mal als Zahl, mal als String, mal leer. Hier konsequent
  * auf den Zieltyp casten, damit die UI nie z. B. .trim() auf einer Zahl aufruft.
  */
@@ -62,7 +77,7 @@ function normalizeEntry(raw: Record<string, unknown>): Entry {
     id: asString(raw.id),
     createdAt: asString(raw.createdAt),
     updatedAt: asString(raw.updatedAt),
-    date: asString(raw.date),
+    date: asDate(raw.date),
     harborFrom: asString(raw.harborFrom),
     harborTo: asString(raw.harborTo),
     engineHours: asNumber(raw.engineHours),
