@@ -1,160 +1,120 @@
-# CLAUDE.md – Bordbuch (Motorboot-Logbuch)
+# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v2 (aktualisiert: Dashboard 3-stufig, Akzent Marineblau)
 
-Dieser Brief ist der vollständige Kontext für den Bau des Frontends. Das Backend
-(Google Apps Script API) **existiert bereits und funktioniert** – nicht neu bauen.
-Aufgabe: das React-Frontend gemäss diesem Brief erstellen und auf GitHub Pages deployen.
-
----
+WICHTIG: Dies ersetzt die alte Spec. Das Frontend existiert teilweise schon und muss
+auf dieses Modell **refactored** werden. Das Backend (Code.gs v2) ist fertig.
 
 ## 1. Ziel
-
-Mobile-first Logbuch-App für ein Motorboot (Zürichsee), Nutzung am Steuerstand auf
-dem Smartphone. Alle Daten liegen ausschliesslich in einer Google-Tabelle, Zugriff
-über eine bestehende Apps-Script-Web-App. Volles CRUD.
+Mobile-first Logbuch für ein Motorboot in **Ascona, Lago Maggiore**. Nutzung am
+Steuerstand auf dem Smartphone. Alle Daten in einer Google-Tabelle, Zugriff über eine
+bestehende Apps-Script-Web-App. Volles CRUD. (Bootsname: noch offen → Platzhalter in der Topbar.)
 
 ## 2. Architektur (verbindlich)
+Vite + React + TS + Tailwind, statisch auf GitHub Pages. API = Google Apps Script
+(fertig). Speicher = Google Sheets. Auto-Deploy via GitHub Actions auf Push nach `main`.
+Keine andere DB, kein Server, kein Firebase. **Keine Foto-Uploads** (vorerst).
 
-| Teil | Technologie |
-|---|---|
-| Frontend | Vite + React + TypeScript + Tailwind (jeweils aktuelle Version, offizielle Integrationen) |
-| API / Backend | Google Apps Script Web-App (**fertig**) |
-| Datenspeicher | Google Sheets (**fertig**) |
-| Deployment | GitHub Pages via GitHub Actions, Auto-Deploy bei Push auf `main` |
+## 3. API-Vertrag (Backend ist fertig, nicht ändern)
+Antworten: `{ ok, data?, error? }`.
+- Liste: `GET {URL}?action=list&token={TOKEN}` → `{ ok, data: Entry[] }`
+- Create/Update/Delete: `POST {URL}` mit `Content-Type: text/plain` (CORS-Trick!),
+  Body JSON-String `{ token, action, ...felder }`.
+- Kein `no-cors`, keine Zusatz-Header, Redirect folgen lassen.
 
-Datenfluss: React → `fetch` → Apps-Script-URL → Sheet → JSON.
-
-**Keine andere DB, kein eigener Server, kein Firebase.**
-
-## 3. API-Vertrag (so antwortet das bestehende Backend)
-
-Alle Antworten haben die Form `{ ok: boolean, data?: any, error?: string }`.
-
-- **Liste:** `GET  {URL}?action=list&token={TOKEN}` → `{ ok, data: Trip[] }`
-- **Create:** `POST {URL}` Body (JSON-String) `{ token, action:"create", ...felder }` → `{ ok, data: Trip }`
-- **Update:** `POST {URL}` Body `{ token, action:"update", id, ...geänderteFelder }` → `{ ok, data: Trip }`
-- **Delete:** `POST {URL}` Body `{ token, action:"delete", id }` → `{ ok, data:{ id, deleted:true } }`
-
-**CORS-Trick (zwingend):** POST mit `Content-Type: text/plain` senden (KEIN
-`application/json`), um den Preflight zu vermeiden. Der Body ist trotzdem ein
-JSON-String. `fetch` muss Redirects folgen (Standard bei `fetch`).
-
-**Token:** Liegt zur Laufzeit in einer Env-Variable (siehe §8). Niemals hartkodieren.
-
-## 4. Datenmodell (Spalten im Sheet, exakt diese Reihenfolge)
-
+## 4. Datenmodell (Sheet "Logbuch", exakt diese Reihenfolge)
 | Spalte | Typ | Pflicht | Quelle |
 |---|---|---|---|
-| `id` | string | – | Backend |
-| `createdAt` | ISO-Datetime | – | Backend |
-| `updatedAt` | ISO-Datetime | – | Backend |
-| `startTime` | ISO-Datetime | ja | User |
-| `endTime` | ISO-Datetime | ja | User |
-| `harborFrom` | string | ja | User |
-| `harborTo` | string | ja | User |
-| `engineHoursStart` | number | ja | User |
-| `engineHoursEnd` | number | ja | User |
-| `fuelLiters` | number | – | User (nur bei Tankstopp) |
-| `fuelCostChf` | number | – | User (nur bei Tankstopp) |
-| `crew` | string (kommagetrennt) | – | User |
-| `notes` | string | – | User |
-| `weatherTempC` | number | – | Backend (auto) |
-| `weatherWindKn` | number | – | Backend (auto) |
-| `weatherDesc` | string | – | Backend (auto) |
+| id | string | – | Backend |
+| createdAt | datetime | – | Backend |
+| updatedAt | datetime | – | Backend |
+| date | ISO-Datum (YYYY-MM-DD) | ja | User |
+| harborFrom | string | ja | User (Default "Ascona, Porto Patriziale") |
+| harborTo | string (Freitext) | – | User |
+| engineHours | number | ja | User (**Zählerstand bei Start**, EIN Wert) |
+| fuelLiters | number | – | User (nur bei Tankstopp) |
+| fuelCostChf | number | – | User (nur bei Tankstopp) |
+| paidBy | string | – | User ("Bezahlt durch") |
+| notes | string | – | User ("Benutzung") |
+| weatherTempC | number | – | Backend (auto) |
+| weatherWindKn | number | – | Backend (auto) |
+| weatherWindDir | number (Grad) | – | Backend (auto) |
+| weatherDesc | string | – | Backend (auto) |
 
-**Es gibt KEINE Distanz** (Boot hat nur einen Betriebsstunden-Zähler).
-Wetter wird vom Backend automatisch befüllt – Frontend nur anzeigen.
+Keine Start/Ende-Zeiten, keine Distanz, keine Fotos. engineHours ist EIN Zählerstand.
 
 ## 5. Berechnungslogik (im Frontend, NICHT gespeichert)
-
-- **Betriebsstunden je Törn** = `engineHoursEnd − engineHoursStart`
-- **Fahrzeit** = `endTime − startTime`
-- **Saison-Aggregate (exakt):**
-  - Ø Verbrauch l/h = `Σ fuelLiters ÷ Σ Betriebsstunden`
-  - Ø CHF/l = `Σ fuelCostChf ÷ Σ fuelLiters`
-  - CHF/h = `Σ fuelCostChf ÷ Σ Betriebsstunden`
-  - Gesamtkosten = `Σ fuelCostChf`
-- **Verbrauch pro Törn (Schätzung, ⚠️ nicht exakt):**
-  Liter werden nur bei Tankstopps erfasst, Volltanken ist NICHT garantiert.
-  Vorgehen: Törns chronologisch durchlaufen, Betriebsstunden akkumulieren. Trifft man
-  auf einen Törn mit `fuelLiters`, schliesst das einen „Tank-Block": Block-l/h =
-  `Liter ÷ Σ Betriebsstunden im Block`. Dieser Wert wird allen Törns des Blocks
-  zugewiesen. Törns nach dem letzten Tankstopp: Saison-Ø als Platzhalter.
-  Per-Törn-Werte immer als Schätzung kennzeichnen (z. B. „≈ 13.0 l/h").
-  Wenn ein Block keine Stunden hat, Division durch 0 abfangen.
+Einträge nach `date` aufsteigend sortieren, dann:
+- **Stunden je Eintrag** = `engineHours(dieser) − engineHours(vorheriger)`. Erster = 0.
+  Negative/fehlende Werte abfangen (→ "–").
+- **h seit Start** = `engineHours − kleinster engineHours`.
+- **Verbrauch l/h (Schätzung, "≈")**: Liter nur bei Tankstopps. Tank-Block = Einträge
+  seit letztem Tankstopp; Block-l/h = `Liter ÷ Stundendiff im Block`; Wert allen Einträgen
+  des Blocks zuweisen. Nach letztem Tankstopp → "–". Div/0 → "–".
+- **Jahr-Aggregate** je Kalenderjahr aus `date`:
+  - Betriebsstunden/Jahr = Summe der Stundendiffs der Einträge des Jahres.
+  - Einträge/Jahr ("Ereignisse").
+  - Treibstoff/Jahr = Σ fuelLiters bzw. Σ fuelCostChf.
+  - Verbrauch/Jahr l/h = Σ Liter/Jahr ÷ Σ Stunden/Jahr → mit "≈" (jahresweise unpräzise).
+  - CHF/h pro Jahr.
+- **Total/Gesamt:** Σ Stunden, Σ CHF, Σ Liter, Ø l/h = Σ Liter ÷ Σ Stunden (EXAKT, ohne "≈").
+- **Durchschnitt pro Jahr:** Total ÷ Anzahl Jahre (Ø Stunden/Jahr, Ø Einträge/Jahr, Ø Kosten/Jahr).
 
 ## 6. Features (MVP)
+1. **Liste** aller Einträge, `date` absteigend, mit Suche/Filter (Hafen, paidBy, Jahr).
+   Kachel zeigt: Stunden dieses Eintrags, Zählerstand, ≈ l/h (Block, "–" wenn unbekannt).
+2. **CRUD**: erfassen / bearbeiten / löschen.
+3. **Detailansicht**: alle Felder + Wetter (Temp, Wind kn + Richtung als Kompass, Lage) +
+   berechnete Werte (Stunden, h seit Start, ≈ l/h).
+4. **Dashboard – DREI EBENEN** (siehe Mockup `bordbuch-dashboard-v2.html` als visuelle Vorlage):
+   - **(a) Total** über alle Jahre: 4 Instrument-Kacheln – Gesamt-Betriebsstunden,
+     Ø Verbrauch l/h (exakt, OHNE "≈"), Treibstoffkosten CHF, Anzahl Einträge.
+   - **(b) Ø pro Jahr**: Ø Stunden/Jahr, Ø Einträge/Jahr, Ø Kosten/Jahr (kleine Box-Reihe).
+   - **(c) Pro Jahr**: umschaltbarer Balkenchart (Motor h / Einträge / Treibstoff) über alle
+     Jahre, mit Ø-Linie. Balken antippbar → wählt das Jahr für (d).
+   - **(d) Einzeljahr im Detail**: Jahr per Chips/Balken wählbar → Betriebsstunden
+     (+Δ gegenüber Ø), Einträge, Liter, CHF, ≈ l/h, CHF/h.
+5. Status klar: Spinner, Toast bei Erfolg/Fehler.
 
-1. **Liste** aller Törns, sortiert nach `startTime` absteigend, mit Suche/Filter
-   (Hafen, Crew, Zeitraum).
-2. **CRUD**: Törn erfassen / bearbeiten / löschen.
-3. **Detailansicht** eines Eintrags (alle Felder + Wetter + berechnete Werte).
-4. **Dashboard** mit Statistik-Kacheln: **Treibstoffkosten CHF**, Gesamt-Betriebsstunden,
-   Ø Verbrauch l/h, Anzahl Törns. (Kein „Gesamtdistanz" – existiert nicht.)
-5. **Status klar anzeigen**: Spinner beim Laden, Toast bei Erfolg/Fehler.
-
-UX-Detail: Beim Neuanlegen den letzten `engineHoursEnd` als Vorschlag für
-`engineHoursStart` vorbefüllen (schnelle Erfassung).
+UX-Detail: Neuer Eintrag → `harborFrom` mit "Ascona, Porto Patriziale" vorbefüllen,
+`engineHours` mit dem letzten (höchsten) Zählerstand als Vorschlag.
 
 ## 7. UX / Design
+Beibehalten: Chartplotter-/Instrument-Optik, Tag/Nacht (mit Persistenz, prefers-color-scheme
+als Default), mobile-first, full-bleed (KEIN Geräterahmen), grosse Touch-Targets, Quality-Floor
+(focus-visible, prefers-reduced-motion, safe-area, responsive ≤360px).
 
-Visueller Referenz-Stil: **Chartplotter / Instrumenten-Display**, nicht Leder-Logbuch.
-Mobile-first, grosse Touch-Targets (nasse Hände, Bewegung), hoher Kontrast für Sonne.
+**Farb-Tokens (maritim, KEIN Orange mehr):**
+- Tag: bg `#E6EDF2`, surface `#FFFFFF`, surface-2 `#F2F6F9`, ink `#0A2233`, ink-2 `#52708A`,
+  line `#D5E0E8`, **Akzent (Primär/CTA) `#1C5C8C` (Marineblau)**, Wasser/aktiv `#0C7C82` (Teal).
+- Nacht: bg `#04101A`, surface `#0E2030`, ink `#DCEAF2`, **Akzent `#3E8FC4`**, Teal `#2BC4C4`.
+- Akzent (Marineblau) nur für primäre Aktionen, aktive Nav, FAB, „hot"-Kachel-Linie.
+  Teal für Wasser/sekundär. (Akzent leicht austauschbar, falls Wahl auf Rot/Messing fällt.)
+- Fonts: Barlow Condensed (Display), Inter (UI), JetBrains Mono (Zahlen, tabular-nums).
 
-**Design-Tokens (aus dem freigegebenen Mockup):**
-
-- **Tag-Modus:** bg `#E6EDF2`, surface `#FFFFFF`, ink `#0A2233`, ink-2 `#52708A`,
-  Linie `#D5E0E8`, Akzent/CTA `#FF5A1F` (Signal-Orange), Wasser/aktiv `#0C7C82` (Teal).
-- **Nacht-Modus:** bg `#04101A`, surface `#0E2030`, ink `#DCEAF2`, Akzent `#FF6A35`,
-  Teal `#2BC4C4`. Tag/Nacht-Umschalter ist ein **echtes Feature** (wie auf jedem Plotter).
-- **Typografie:** Display/Überschriften `Barlow Condensed`; UI/Body `Inter`;
-  Zahlen/Daten `JetBrains Mono` (tabellarische Ziffern, `font-variant-numeric: tabular-nums`).
-- **Signature:** Statistik-Kacheln als Instrumenten-Anzeigen (kleines Label oben,
-  grosse Mono-Zahl, dünne Akzentlinie oben). Orange nur für primäre Aktionen.
-
-Eine lauffähige HTML-Mockup-Datei (`bordbuch-mockup.html`) dient als visuelle Vorlage –
-Layout, Farben, Kachel-Stil, Liste, Detail, Formular und Tag/Nacht dort übernehmen.
-
-## 8. Tech-Stack & Konventionen
-
-- Vite + React + TS + Tailwind. Sauberer Code, Kommentare nur an komplexen Stellen.
-- **Env-Variablen** (Vite-Konvention `VITE_*`):
-  - `VITE_API_URL` – die `/exec`-URL der Apps-Script-Web-App
-  - `VITE_API_TOKEN` – das Shared Secret
-- **`.env.example` mitliefern** (mit Platzhaltern, ohne echte Werte).
-- Echte Werte: lokal in `.env` (gitignored!), für Deploy in GitHub Actions Secrets.
-- `vite.config.ts`: `base: '/<repo-name>/'` setzen (Repo-Name = Pages-Pfad).
-- API-Client als dünner Wrapper kapseln: `list()`, `create()`, `update()`, `delete()`,
-  inkl. einheitlicher Lade-/Fehlerbehandlung über das `{ ok, data, error }`-Envelope.
+## 8. Tech / Config
+Env: `VITE_API_URL`, `VITE_API_TOKEN`. `.env` gitignored (echte Werte), `.env.example`
+NUR Platzhalter. `vite.config.ts` base `/bordbuch/`. API-Client als dünner Wrapper über
+das `{ok,data,error}`-Envelope. Sauberer Code, Kommentare nur an komplexen Stellen.
 
 ## 9. Deployment
+GitHub Actions → Pages (Source = "GitHub Actions"). Secrets im Build als env injizieren.
 
-- GitHub Actions Workflow `.github/workflows/deploy.yml`: bei Push auf `main`
-  Build + Deploy auf GitHub Pages.
-- `VITE_API_URL` und `VITE_API_TOKEN` als **GitHub Secrets** in den Build injizieren.
-- README mit Schritten: Secrets setzen, Pages aktivieren, lokal starten.
+## 10. Refactor-Auftrag
+Bestehendes Frontend auf dieses Modell umbauen:
+- types.ts: Entry/EntryInput auf die 15 Felder; `engineHours` (single), `paidBy`,
+  `harborTo` Freitext, Wetterfelder inkl. `weatherWindDir`.
+- calc.ts: Stundendiff (Zählerstand), h-seit-Start, Jahr-Aggregate, Ø-pro-Jahr, Verbrauch.
+- FormScreen: date statt Zeiten, ein engineHours (Vorbefüllung letzter Stand),
+  harborFrom-Default Ascona, harborTo Freitext, paidBy. Validierung anpassen.
+- ListScreen/DetailScreen: neue Felder, Wind (kn + Kompassrichtung).
+- DashboardScreen: die DREI Ebenen aus §6.4 (Total → Ø/Jahr → Pro-Jahr-Chart → Einzeljahr-
+  Detail mit Δ vs Ø). Mockup `bordbuch-dashboard-v2.html` als Vorlage.
+- Distanz/Fahrzeit/Crew/Foto-Reste entfernen. Akzentfarbe auf Marineblau umstellen.
 
-## 10. Constraints & Non-Goals
+## 11. Constraints & Non-Goals
+Nur Sheets, keine Fotos (vorerst), ein Boot. Token im Frontend bewusst akzeptiert.
 
-- Ausschliesslich Google Sheets als Speicher. Kein eigener Server, kein Firebase.
-- MVP: ein Boot, ein Tabellenblatt, keine Foto-Uploads.
-- Token im Frontend = bewusst akzeptiert (Obscurity, nicht echte Sicherheit).
-
-## 11. Backlog (NICHT jetzt)
-
-Offline-Cache + Nachsync; Wartungs-Log mit Betriebsstunden-Erinnerung; Dashboard-Ausbau
-(Verbrauchs-/Preis-Trend, Saison-Fortschritt, Top-Hafen); PDF-Export; Google-Login-Härtung.
-
-## 12. Build-Reihenfolge
-
-1. Vite-Projekt + Tailwind + Env-Handling, `base`-Pfad.
-2. API-Client (`list/create/update/delete`) gegen das Envelope.
-3. Liste + Formular (Create/Edit/Delete) + Detailansicht.
-4. Dashboard-Statistiken (aus geladenen Zeilen berechnet).
-5. Design gemäss Mockup + Tag/Nacht.
-6. GitHub-Actions-Deployment + README.
+## 12. Backlog
+Foto-Upload via Drive (Stundenzähler + Beleg), Offline-Cache, PDF-Export, Login-Härtung.
 
 ## 13. Sicherheit
-
-- `.env` und alle echten Tokens/URLs **niemals committen** (in `.gitignore`).
-- Im Repo nur `.env.example` mit Platzhaltern.
-- Secrets ausschliesslich über die GitHub-Repo-Settings setzen.
+.env nie committen, echte Werte nur in .env (lokal) + GitHub Secrets.

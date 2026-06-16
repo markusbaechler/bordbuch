@@ -1,8 +1,8 @@
 /**
- * BORDBUCH – Google Apps Script API
+ * BORDBUCH – Google Apps Script API  (v2 – Zählerstand-Modell, Ascona / Lago Maggiore)
  * Gebunden an die Tabelle, Tabellenblatt "Logbuch".
  * Endpunkte:
- *   GET  ?action=list&token=...                    -> alle Törns
+ *   GET  ?action=list&token=...                    -> alle Einträge
  *   POST {action:'create'|'update'|'delete', ...}  -> CRUD
  * Antwort immer: { ok: boolean, data?: ..., error?: string }
  */
@@ -12,34 +12,33 @@ const SHEET_NAME = 'Logbuch';
 // Spaltenreihenfolge MUSS exakt der Header-Zeile entsprechen.
 const HEADERS = [
   'id', 'createdAt', 'updatedAt',
-  'startTime', 'endTime', 'harborFrom', 'harborTo',
-  'engineHoursStart', 'engineHoursEnd',
+  'date', 'harborFrom', 'harborTo',
+  'engineHours',
   'fuelLiters', 'fuelCostChf',
-  'crew', 'notes',
-  'weatherTempC', 'weatherWindKn', 'weatherDesc'
+  'paidBy', 'notes',
+  'weatherTempC', 'weatherWindKn', 'weatherWindDir', 'weatherDesc'
 ];
 
 // Felder, die der Client setzen darf (Rest wird serverseitig vergeben).
 const USER_FIELDS = [
-  'startTime', 'endTime', 'harborFrom', 'harborTo',
-  'engineHoursStart', 'engineHoursEnd',
-  'fuelLiters', 'fuelCostChf', 'crew', 'notes'
+  'date', 'harborFrom', 'harborTo',
+  'engineHours', 'fuelLiters', 'fuelCostChf',
+  'paidBy', 'notes'
 ];
 
-// Hafen -> Koordinaten für die Wetter-Anreicherung. Beliebig erweiterbar.
+const DEFAULT_HARBOR_FROM = 'Ascona, Porto Patriziale';
+
+// Hafen -> Koordinaten für die Wetter-Anreicherung (Lago Maggiore). Erweiterbar.
 const HARBORS = {
-  'Wollishofen': { lat: 47.341, lon: 8.536 },
-  'Zürich':      { lat: 47.366, lon: 8.541 },
-  'Thalwil':     { lat: 47.292, lon: 8.564 },
-  'Horgen':      { lat: 47.260, lon: 8.598 },
-  'Wädenswil':   { lat: 47.230, lon: 8.674 },
-  'Au':          { lat: 47.232, lon: 8.682 },
-  'Meilen':      { lat: 47.270, lon: 8.644 },
-  'Stäfa':       { lat: 47.240, lon: 8.726 },
-  'Pfäffikon':   { lat: 47.203, lon: 8.778 },
-  'Rapperswil':  { lat: 47.226, lon: 8.818 }
+  'Ascona, Porto Patriziale': { lat: 46.152, lon: 8.768 },
+  'Ascona':                   { lat: 46.155, lon: 8.771 },
+  'Locarno':                  { lat: 46.166, lon: 8.794 },
+  'Brissago':                 { lat: 46.122, lon: 8.717 },
+  'Magadino':                 { lat: 46.150, lon: 8.852 },
+  'Cannobio':                 { lat: 46.067, lon: 8.692 },
+  'Luino':                    { lat: 46.000, lon: 8.742 }
 };
-const DEFAULT_COORDS = { lat: 47.27, lon: 8.65 }; // Zürichsee-Mitte als Fallback
+const DEFAULT_COORDS = HARBORS[DEFAULT_HARBOR_FROM]; // Ascona als Fallback
 
 
 /* ============================ ENDPUNKTE ============================ */
@@ -56,7 +55,6 @@ function doGet(e) {
 
 function doPost(e) {
   // CORS-Trick: Client sendet Content-Type text/plain -> kein Preflight.
-  // Body ist dadurch ein JSON-String, den wir hier selbst parsen.
   try {
     const body = JSON.parse(e.postData.contents || '{}');
     if (!authorized(body.token)) return json({ ok: false, error: 'unauthorized' });
@@ -79,9 +77,7 @@ function listRows() {
   const sheet = getSheet();
   const values = sheet.getDataRange().getValues();
   values.shift(); // Header weg
-  return values
-    .filter(row => row[0] !== '') // leere Zeilen ignorieren
-    .map(rowToObject);
+  return values.filter(row => row[0] !== '').map(rowToObject);
 }
 
 function createRow(body) {
@@ -90,14 +86,16 @@ function createRow(body) {
   try {
     const now = new Date().toISOString();
     const obj = pickUserFields(body);
+    if (!obj.harborFrom) obj.harborFrom = DEFAULT_HARBOR_FROM; // Default-Hafen
     obj.id = String(Date.now());
     obj.createdAt = now;
     obj.updatedAt = now;
 
     // Wetter automatisch anreichern (best effort; Fehler kippen den Eintrag nicht).
-    const w = fetchWeather(obj.harborFrom, obj.startTime);
+    const w = fetchWeather(obj.harborFrom, obj.date);
     obj.weatherTempC = w.tempC;
     obj.weatherWindKn = w.windKn;
+    obj.weatherWindDir = w.windDir;
     obj.weatherDesc = w.desc;
 
     getSheet().appendRow(HEADERS.map(h => obj[h] === undefined ? '' : obj[h]));
@@ -112,7 +110,7 @@ function updateRow(body) {
   lock.waitLock(10000);
   try {
     const sheet = getSheet();
-    const rowIndex = findRowIndexById(sheet, body.id); // 1-basiert inkl. Header
+    const rowIndex = findRowIndexById(sheet, body.id);
     if (rowIndex === -1) throw new Error('id not found: ' + body.id);
 
     const existing = rowToObject(sheet.getRange(rowIndex, 1, 1, HEADERS.length).getValues()[0]);
@@ -145,50 +143,47 @@ function deleteRow(body) {
 /* ============================ WETTER ============================ */
 
 /**
- * Holt Temperatur (°C), Wind (kn) und Wetterlage zur Startzeit am Abfahrtshafen.
- * Wählt automatisch Forecast- vs. Archiv-Endpunkt je nach Alter des Datums.
+ * Tageswerte (Temperatur °C, Wind kn + Richtung, Wetterlage) für den Hafen am Datum.
+ * Date-only -> wir nutzen den Open-Meteo "daily"-Endpunkt (kein Stunden-Picking noetig).
+ * Waehlt automatisch Forecast- vs. Archiv-Endpunkt je nach Alter des Datums.
  */
-function fetchWeather(harbor, startTime) {
+function fetchWeather(harbor, date) {
   try {
-    if (!startTime) return blankWeather();
+    if (!date) return blankWeather();
     const c = HARBORS[harbor] || DEFAULT_COORDS;
-    const date = String(startTime).slice(0, 10);          // YYYY-MM-DD
-    const hour = String(startTime).slice(11, 13) || '12'; // HH
+    const d = String(date).slice(0, 10); // YYYY-MM-DD
 
-    const ageDays = (Date.now() - new Date(date).getTime()) / 86400000;
+    const ageDays = (Date.now() - new Date(d).getTime()) / 86400000;
     const base = ageDays > 5
-      ? 'https://archive-api.open-meteo.com/v1/archive'   // ältere Törns
-      : 'https://api.open-meteo.com/v1/forecast';         // aktuelle Törns
+      ? 'https://archive-api.open-meteo.com/v1/archive'
+      : 'https://api.open-meteo.com/v1/forecast';
 
     const url = base
       + '?latitude=' + c.lat + '&longitude=' + c.lon
-      + '&hourly=temperature_2m,wind_speed_10m,weather_code'
+      + '&daily=temperature_2m_mean,wind_speed_10m_max,wind_direction_10m_dominant,weather_code'
       + '&wind_speed_unit=kn&timezone=auto'
-      + '&start_date=' + date + '&end_date=' + date;
+      + '&start_date=' + d + '&end_date=' + d;
 
     const res = JSON.parse(UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText());
-    const h = res.hourly;
-    if (!h || !h.time) return blankWeather();
-
-    // Stunde finden, die der Startzeit am nächsten ist.
-    let idx = h.time.findIndex(t => t.slice(11, 13) === hour);
-    if (idx === -1) idx = Math.min(12, h.time.length - 1);
+    const day = res.daily;
+    if (!day || !day.time || !day.time.length) return blankWeather();
 
     return {
-      tempC: round1(h.temperature_2m[idx]),
-      windKn: round1(h.wind_speed_10m[idx]),
-      desc: wmoToText(h.weather_code[idx])
+      tempC: round1(day.temperature_2m_mean[0]),
+      windKn: round1(day.wind_speed_10m_max[0]),
+      windDir: numOrBlank(day.wind_direction_10m_dominant[0]),
+      desc: wmoToText(day.weather_code[0])
     };
   } catch (err) {
     return blankWeather();
   }
 }
 
-function blankWeather() { return { tempC: '', windKn: '', desc: '' }; }
+function blankWeather() { return { tempC: '', windKn: '', windDir: '', desc: '' }; }
 
 function wmoToText(code) {
   const m = {
-    0: 'Klar', 1: 'Überwiegend klar', 2: 'Teilweise bewölkt', 3: 'Bedeckt',
+    0: 'Klar', 1: 'Ueberwiegend klar', 2: 'Teilweise bewoelkt', 3: 'Bedeckt',
     45: 'Nebel', 48: 'Reifnebel',
     51: 'Leichter Niesel', 53: 'Niesel', 55: 'Starker Niesel',
     56: 'Gefrierender Niesel', 57: 'Gefrierender Niesel',
@@ -225,9 +220,9 @@ function pickUserFields(body) {
 }
 
 function findRowIndexById(sheet, id) {
-  const ids = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues(); // Spalte A
-  for (let i = 1; i < ids.length; i++) {            // ab Zeile 2 (Header überspringen)
-    if (String(ids[i][0]) === String(id)) return i + 1; // +1: 1-basierte Zeilennummer
+  const ids = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
+  for (let i = 1; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(id)) return i + 1;
   }
   return -1;
 }
@@ -243,14 +238,11 @@ function json(obj) {
 }
 
 function round1(n) { return (n === null || n === undefined) ? '' : Math.round(n * 10) / 10; }
+function numOrBlank(n) { return (n === null || n === undefined) ? '' : Math.round(n); }
 
 
 /* ============================ EINMALIGES SETUP ============================ */
 
-/**
- * Einmal ausführen, um das Token zu setzen.
- * Danach diese Funktion wieder löschen oder das Token ändern.
- */
 function setupToken() {
   PropertiesService.getScriptProperties().setProperty('API_TOKEN', 'HIER_DEIN_GEHEIMES_TOKEN');
 }

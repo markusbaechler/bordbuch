@@ -26,7 +26,7 @@ export function BottomNav({
       />
       <button
         onClick={() => onNavigate('new')}
-        className="mx-1.5 -mt-[22px] flex max-w-[62px] flex-1 flex-col items-center gap-1 rounded-[18px] bg-accent px-0 pb-2 pt-[11px] text-[11px] font-semibold text-white shadow-[0_8px_18px_rgba(255,90,31,.4)]"
+        className="mx-1.5 -mt-[22px] flex max-w-[62px] flex-1 flex-col items-center gap-1 rounded-[18px] bg-accent px-0 pb-2 pt-[11px] text-[11px] font-semibold text-white shadow-[0_8px_18px_rgba(28,92,140,.4)]"
       >
         <IconPlus className="mb-px" />
         Neu

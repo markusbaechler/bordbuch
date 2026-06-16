@@ -1,8 +1,8 @@
 # Bordbuch · Motorboot-Logbuch
 
-Mobile-first Logbuch-App für ein Motorboot (Zürichsee), Bedienung am Steuerstand.
-Alle Daten liegen in einer Google-Tabelle; der Zugriff läuft über eine bestehende
-Google-Apps-Script-Web-App. Volles CRUD, Dashboard, Tag-/Nacht-Modus.
+Mobile-first Logbuch-App für ein Motorboot in **Ascona, Lago Maggiore**, Bedienung am
+Steuerstand. Alle Daten liegen in einer Google-Tabelle; der Zugriff läuft über eine
+bestehende Google-Apps-Script-Web-App. Volles CRUD, 3-stufiges Dashboard, Tag-/Nacht-Modus.
 
 **Stack:** Vite · React · TypeScript · Tailwind CSS v4 · Deploy via GitHub Pages.
 
@@ -91,15 +91,20 @@ https://<dein-user>.github.io/bordbuch/
 
 ## 4. Datenmodell & Logik (Kurzfassung)
 
-Ein Eintrag (`Trip`) entspricht einer Zeile im Tabellenblatt `Logbuch`. Es gibt
-**keine Distanz** (das Boot hat nur einen Betriebsstunden-Zähler). Wetter
-(`weatherTempC/WindKn/Desc`) wird vom Backend automatisch ergänzt.
+Ein Eintrag (`Entry`) entspricht einer Zeile im Tabellenblatt `Logbuch`. `engineHours`
+ist **ein** Zählerstand (Betriebsstundenzähler bei Start), `harborTo` ist Freitext.
+Es gibt **keine Zeiten und keine Distanz**. Wetter (`weatherTempC`, `weatherWindKn`,
+`weatherWindDir` in Grad, `weatherDesc`) wird vom Backend automatisch ergänzt.
 
 Im Frontend berechnet (nicht gespeichert):
 
-- **Betriebsstunden/Törn** = `engineHoursEnd − engineHoursStart`
-- **Fahrzeit** = `endTime − startTime`
-- **Saison-Aggregate** (exakt): Ø l/h, Ø CHF/l, CHF/h, Gesamtkosten
-- **Verbrauch/Törn** (Schätzung ≈): über „Tank-Blöcke" – Liter eines Tankstopps
-  werden auf die Betriebsstunden seit dem letzten Stopp verteilt. Törns nach dem
-  letzten Tankstopp nutzen den Saison-Ø als Platzhalter.
+- **Stunden je Eintrag** = `engineHours − engineHours(vorheriger)`; erster = 0; negativ/fehlend → „–".
+- **h seit Start** = `engineHours − kleinster engineHours overall`.
+- **Verbrauch/Eintrag** (Schätzung ≈): über „Tank-Blöcke" – Liter eines Tankstopps
+  werden auf die Stunden seit dem letzten Stopp verteilt. Nach dem letzten Tankstopp → „–".
+- **Jahr-Aggregate** je Kalenderjahr: Betriebsstunden = `max(Jahr) − max(Vorjahr)`,
+  Einträge, Liter, CHF, ≈ l/h, CHF/h.
+- **Total** über alle Jahre: Σ Stunden, Σ CHF, Σ Liter, Ø l/h (**exakt, ohne ≈**);
+  sowie Ø pro Jahr = Total ÷ Anzahl Jahre.
+
+Dashboard in drei Ebenen: Total → Ø/Jahr → Pro-Jahr-Chart (antippbar) → Einzeljahr-Detail.

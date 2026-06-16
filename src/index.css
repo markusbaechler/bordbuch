@@ -16,7 +16,7 @@
   --ink-2: #52708a;
   --ink-3: #86a0b4;
   --line: #d5e0e8;
-  --accent: #ff5a1f; /* Signal-Orange, CTA */
+  --accent: #1c5c8c; /* Marineblau, CTA/primär */
   --teal: #0c7c82; /* Wasser / aktiv */
   --teal-soft: #e2f1f2;
   --good: #15935e;
@@ -34,7 +34,7 @@ html[data-mode='night'] {
   --ink-2: #6e8a9c;
   --ink-3: #4c6678;
   --line: #1b3346;
-  --accent: #ff6a35;
+  --accent: #3e8fc4; /* Marineblau (Nacht) */
   --teal: #2bc4c4;
   --teal-soft: #0c2a30;
   --good: #2fbf7e;

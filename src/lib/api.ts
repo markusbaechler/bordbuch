@@ -7,14 +7,13 @@
  *  2. POST: einziger Header ist Content-Type: text/plain. Jeder weitere Header
  *     (application/json, Authorization …) löst einen Preflight aus, den Apps
  *     Script nicht beantwortet. Body ist trotzdem ein JSON-String.
- *  3. redirect NICHT auf 'manual' – fetch muss dem 302 → googleusercontent folgen
- *     (Standardverhalten, daher hier nicht überschrieben).
+ *  3. redirect NICHT auf 'manual' – fetch muss dem 302 → googleusercontent folgen.
  *  4. Antwort immer als { ok, data, error } parsen; bei ok:false werfen.
  *  5. Token: list via Query-Param, Schreib-Aktionen im JSON-Body.
  */
 
 import { env, isConfigured } from './env'
-import type { ApiEnvelope, Trip, TripInput } from './types'
+import type { ApiEnvelope, Entry, EntryInput } from './types'
 
 type WriteAction = 'create' | 'update' | 'delete'
 
@@ -43,17 +42,17 @@ async function parseEnvelope<T>(res: Response): Promise<T> {
 }
 
 /** id kommt aus dem Sheet mal als Zahl, mal als String → immer auf String normalisieren. */
-function normalizeTrip(t: Trip): Trip {
-  return { ...t, id: String(t.id) }
+function normalizeEntry(e: Entry): Entry {
+  return { ...e, id: String(e.id) }
 }
 
-/** GET ?action=list&token=… → Trip[] */
-export async function list(): Promise<Trip[]> {
+/** GET ?action=list&token=… → Entry[] */
+export async function list(): Promise<Entry[]> {
   assertConfigured()
   const url = `${env.apiUrl}?action=list&token=${encodeURIComponent(env.apiToken)}`
   const res = await fetch(url, { method: 'GET' })
-  const data = await parseEnvelope<Trip[]>(res)
-  return data.map(normalizeTrip)
+  const data = await parseEnvelope<Entry[]>(res)
+  return data.map(normalizeEntry)
 }
 
 /**
@@ -70,12 +69,12 @@ async function post<T>(action: WriteAction, payload: Record<string, unknown>): P
   return parseEnvelope<T>(res)
 }
 
-export async function create(input: TripInput): Promise<Trip> {
-  return normalizeTrip(await post<Trip>('create', input))
+export async function create(input: EntryInput): Promise<Entry> {
+  return normalizeEntry(await post<Entry>('create', input))
 }
 
-export async function update(id: string, changes: Partial<TripInput>): Promise<Trip> {
-  return normalizeTrip(await post<Trip>('update', { id, ...changes }))
+export async function update(id: string, changes: Partial<EntryInput>): Promise<Entry> {
+  return normalizeEntry(await post<Entry>('update', { id, ...changes }))
 }
 
 export function remove(id: string): Promise<{ id: string; deleted: true }> {

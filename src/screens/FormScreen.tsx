@@ -1,144 +1,134 @@
 import { useMemo, useState } from 'react'
-import type { Trip, TripInput } from '../lib/types'
-import { fmt, isoToLocalInput, localInputToIso, toNum } from '../lib/format'
+import type { Entry, EntryInput } from '../lib/types'
+import { fmt, toNum } from '../lib/format'
 import { IconChevronLeft, IconSave } from '../components/icons'
 import { useToast } from '../components/Toast'
-import { Eyebrow } from './ListScreen'
+import { Eyebrow } from '../components/Eyebrow'
 
-/** Bekannte Häfen (aus dem Backend) – als Vorschlagsliste, freie Eingabe bleibt erlaubt. */
-const HARBORS = [
-  'Wollishofen',
-  'Zürich',
-  'Thalwil',
-  'Horgen',
-  'Wädenswil',
-  'Au',
-  'Meilen',
-  'Stäfa',
-  'Pfäffikon',
-  'Rapperswil',
-]
+const DEFAULT_HARBOR_FROM = 'Ascona, Porto Patriziale'
+
+/** YYYY-MM-DD in lokaler Zeit (für <input type=date> und Default „heute"). */
+function todayLocal(): string {
+  const d = new Date()
+  const p = (n: number) => (n < 10 ? `0${n}` : String(n))
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
 
 interface FormState {
-  startTime: string // datetime-local
-  endTime: string
+  date: string
   harborFrom: string
   harborTo: string
-  engineHoursStart: string
-  engineHoursEnd: string
+  engineHours: string
   fuelLiters: string
   fuelCostChf: string
-  crew: string
+  paidBy: string
   notes: string
 }
 
-function emptyState(prefillStart: number | null): FormState {
+function emptyState(prefillHours: number | null): FormState {
   return {
-    startTime: '',
-    endTime: '',
-    harborFrom: 'Wollishofen',
+    date: todayLocal(),
+    harborFrom: DEFAULT_HARBOR_FROM,
     harborTo: '',
-    engineHoursStart: prefillStart !== null ? String(prefillStart) : '',
-    engineHoursEnd: '',
+    engineHours: prefillHours !== null ? String(prefillHours) : '',
     fuelLiters: '',
     fuelCostChf: '',
-    crew: '',
+    paidBy: '',
     notes: '',
   }
 }
 
-function fromTrip(t: Trip): FormState {
+function fromEntry(e: Entry): FormState {
   return {
-    startTime: isoToLocalInput(t.startTime),
-    endTime: isoToLocalInput(t.endTime),
-    harborFrom: t.harborFrom,
-    harborTo: t.harborTo,
-    engineHoursStart: String(toNum(t.engineHoursStart) ?? ''),
-    engineHoursEnd: String(toNum(t.engineHoursEnd) ?? ''),
-    fuelLiters: t.fuelLiters === '' ? '' : String(toNum(t.fuelLiters) ?? ''),
-    fuelCostChf: t.fuelCostChf === '' ? '' : String(toNum(t.fuelCostChf) ?? ''),
-    crew: t.crew ?? '',
-    notes: t.notes ?? '',
+    date: e.date,
+    harborFrom: e.harborFrom,
+    harborTo: e.harborTo ?? '',
+    engineHours: String(toNum(e.engineHours) ?? ''),
+    fuelLiters: e.fuelLiters === '' ? '' : String(toNum(e.fuelLiters) ?? ''),
+    fuelCostChf: e.fuelCostChf === '' ? '' : String(toNum(e.fuelCostChf) ?? ''),
+    paidBy: e.paidBy ?? '',
+    notes: e.notes ?? '',
   }
 }
 
 export function FormScreen({
   editing,
-  lastEngineHoursEnd,
+  lastEngineHours,
+  knownHarbors,
+  knownPaidBy,
   saving,
   onCancel,
   onSubmit,
 }: {
-  /** vorhandener Törn = Bearbeiten, null = Neu */
-  editing: Trip | null
-  /** letzter engineHoursEnd zur Vorbefüllung beim Neuanlegen */
-  lastEngineHoursEnd: number | null
+  /** vorhandener Eintrag = Bearbeiten, null = Neu */
+  editing: Entry | null
+  /** höchster Zählerstand bisher (ohne den bearbeiteten Eintrag): Vorbefüllung + Vorschau */
+  lastEngineHours: number | null
+  knownHarbors: string[]
+  knownPaidBy: string[]
   saving: boolean
   onCancel: () => void
-  /** wirft bei Validierungsfehler mit lesbarer Meldung */
-  onSubmit: (input: TripInput) => void | Promise<void>
+  onSubmit: (input: EntryInput) => void | Promise<void>
 }) {
   const toast = useToast()
   const [s, setS] = useState<FormState>(() =>
-    editing ? fromTrip(editing) : emptyState(lastEngineHoursEnd),
+    editing ? fromEntry(editing) : emptyState(lastEngineHours),
   )
-  const [showPrefillHint] = useState(() => !editing && lastEngineHoursEnd !== null)
+  const [showPrefillHint] = useState(() => !editing && lastEngineHours !== null)
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setS((prev) => ({ ...prev, [key]: value }))
   }
 
-  // Sofort-Vorschau Verbrauch dieses Törns (nur grobe Kontrolle, kein Block-Wert).
+  const engineNum = toNum(s.engineHours)
+  const liters = toNum(s.fuelLiters)
+  const cost = toNum(s.fuelCostChf)
+
+  // Stunden seit letztem Eintrag (live).
+  const hoursSince = useMemo(() => {
+    if (engineNum === null || lastEngineHours === null) return null
+    return engineNum - lastEngineHours
+  }, [engineNum, lastEngineHours])
+
+  // Grobe ≈ l/h nur, wenn Liter erfasst und Stunden positiv.
   const previewLh = useMemo(() => {
-    const liters = toNum(s.fuelLiters)
-    const start = toNum(s.engineHoursStart)
-    const end = toNum(s.engineHoursEnd)
-    if (liters === null || start === null || end === null) return null
-    const hours = end - start
-    return hours > 0 ? liters / hours : null
-  }, [s.fuelLiters, s.engineHoursStart, s.engineHoursEnd])
+    if (liters === null || hoursSince === null || hoursSince <= 0) return null
+    return liters / hoursSince
+  }, [liters, hoursSince])
 
-  function validate(): TripInput {
-    const startIso = localInputToIso(s.startTime)
-    const endIso = localInputToIso(s.endTime)
-    const ehStart = toNum(s.engineHoursStart)
-    const ehEnd = toNum(s.engineHoursEnd)
+  // Sanfte Warnung: Zählerstand kleiner als letzter Stand (läuft nur vorwärts).
+  const counterWarning = engineNum !== null && lastEngineHours !== null && engineNum < lastEngineHours
 
-    if (!startIso) throw new Error('Startzeit fehlt.')
-    if (!endIso) throw new Error('Endzeit fehlt.')
-    if (new Date(endIso).getTime() < new Date(startIso).getTime())
-      throw new Error('Endzeit liegt vor der Startzeit.')
+  // Sanfter Hinweis, wenn nur eines der Tank-Felder gefüllt ist.
+  const fuelLonely =
+    (liters !== null && cost === null) || (liters === null && cost !== null)
+
+  function validate(): EntryInput {
+    if (!s.date) throw new Error('Datum fehlt.')
     if (!s.harborFrom.trim()) throw new Error('Abfahrtshafen fehlt.')
-    if (!s.harborTo.trim()) throw new Error('Zielhafen fehlt.')
-    if (ehStart === null) throw new Error('Betriebsstunden Start fehlen.')
-    if (ehEnd === null) throw new Error('Betriebsstunden Ende fehlen.')
-    if (ehEnd < ehStart) throw new Error('Betriebsstunden Ende ist kleiner als Start.')
-
-    const liters = toNum(s.fuelLiters)
-    const cost = toNum(s.fuelCostChf)
+    if (engineNum === null) throw new Error('Zählerstand (Betriebsstunden) fehlt oder ist keine Zahl.')
 
     return {
-      startTime: startIso,
-      endTime: endIso,
+      date: s.date,
       harborFrom: s.harborFrom.trim(),
       harborTo: s.harborTo.trim(),
-      engineHoursStart: ehStart,
-      engineHoursEnd: ehEnd,
+      engineHours: engineNum,
       fuelLiters: liters === null ? '' : liters,
       fuelCostChf: cost === null ? '' : cost,
-      crew: s.crew.trim(),
+      paidBy: s.paidBy.trim(),
       notes: s.notes.trim(),
     }
   }
 
   function handleSubmit() {
-    let input: TripInput
+    let input: EntryInput
     try {
       input = validate()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Eingabe ungültig.')
       return
     }
+    // counterWarning blockiert NICHT – der Eintrag wird trotzdem gespeichert.
     void onSubmit(input)
   }
 
@@ -146,82 +136,107 @@ export function FormScreen({
     <div>
       <button
         onClick={onCancel}
-        className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-2"
+        className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-ink-2"
       >
         <IconChevronLeft />
         Abbrechen
       </button>
-      <Eyebrow>{editing ? 'Törn bearbeiten' : 'Neuer Törn'}</Eyebrow>
+      <Eyebrow>{editing ? 'Eintrag bearbeiten' : 'Neuer Eintrag'}</Eyebrow>
 
-      <div className="grid grid-cols-2 gap-2.5">
-        <Field label="Von">
-          <TextInput
-            list="harbors"
-            value={s.harborFrom}
-            onChange={(v) => set('harborFrom', v)}
-            placeholder="Abfahrtshafen…"
-          />
-        </Field>
-        <Field label="Nach">
-          <TextInput
-            list="harbors"
-            value={s.harborTo}
-            onChange={(v) => set('harborTo', v)}
-            placeholder="Zielhafen…"
-          />
-        </Field>
-      </div>
+      <Field label="Datum">
+        <input
+          type="date"
+          value={s.date}
+          onChange={(e) => set('date', e.target.value)}
+          className={monoCls}
+        />
+      </Field>
+
+      <Field label="Von">
+        <TextInput
+          list="harbors"
+          value={s.harborFrom}
+          onChange={(v) => set('harborFrom', v)}
+          placeholder="Abfahrtshafen…"
+        />
+      </Field>
+      <Field label="Nach (optional)">
+        <TextInput
+          list="harbors"
+          value={s.harborTo}
+          onChange={(v) => set('harborTo', v)}
+          placeholder="Zielhafen / Freitext…"
+        />
+      </Field>
       <datalist id="harbors">
-        {HARBORS.map((h) => (
+        {knownHarbors.map((h) => (
           <option key={h} value={h} />
         ))}
       </datalist>
 
-      <div className="grid grid-cols-2 gap-2.5">
-        <Field label="Start">
-          <DateTimeInput value={s.startTime} onChange={(v) => set('startTime', v)} />
-        </Field>
-        <Field label="Ende">
-          <DateTimeInput value={s.endTime} onChange={(v) => set('endTime', v)} />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
-        <Field label="Betriebsst. Start" hint={showPrefillHint ? '↺ Letzter Stand übernommen' : undefined}>
-          <NumberInput value={s.engineHoursStart} onChange={(v) => set('engineHoursStart', v)} step="0.1" />
-        </Field>
-        <Field label="Betriebsst. Ende">
-          <NumberInput value={s.engineHoursEnd} onChange={(v) => set('engineHoursEnd', v)} step="0.1" />
-        </Field>
-      </div>
-
-      <div className="my-1.5 mb-4 flex items-center justify-between rounded-xl bg-teal-soft px-3.5 py-3">
-        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal">
-          Verbrauch dieser Törn
-        </span>
-        <span className="tabnum font-mono text-[17px] font-bold text-ink">
-          {previewLh === null ? '—' : fmt(previewLh)} l/h
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
-        <Field label="Treibstoff (l)">
-          <NumberInput value={s.fuelLiters} onChange={(v) => set('fuelLiters', v)} step="0.1" placeholder="nur bei Tankstopp" />
-        </Field>
-        <Field label="Kosten (CHF)">
-          <NumberInput value={s.fuelCostChf} onChange={(v) => set('fuelCostChf', v)} step="0.05" placeholder="nur bei Tankstopp" />
-        </Field>
-      </div>
-
-      <Field label="Crew">
-        <TextInput value={s.crew} onChange={(v) => set('crew', v)} placeholder="Namen, kommagetrennt" />
+      <Field
+        label="Zählerstand (Betriebsstunden)"
+        hint={showPrefillHint ? '↺ Letzter Stand' : undefined}
+      >
+        <NumberInput value={s.engineHours} onChange={(v) => set('engineHours', v)} step="0.1" />
       </Field>
 
-      <Field label="Bemerkung">
+      {counterWarning && (
+        <div className="-mt-2 mb-3.5 rounded-lg border border-accent px-3 py-2 text-[12px] text-accent">
+          ⚠ Zählerstand kleiner als letzter Stand ({fmt(lastEngineHours)} h) – Betriebsstundenzähler
+          läuft nur vorwärts. Bitte prüfen (Speichern bleibt möglich).
+        </div>
+      )}
+
+      {/* Live-Vorschau: Stunden seit letztem Eintrag (+ grobe ≈ l/h falls getankt). */}
+      {hoursSince !== null && (
+        <div className="mb-4 flex items-center justify-between rounded-xl bg-teal-soft px-3.5 py-3">
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal">
+            Stunden seit letztem Eintrag
+          </span>
+          <span className="tabnum font-mono text-[17px] font-bold text-ink">
+            {fmt(hoursSince)} h
+            {previewLh !== null && (
+              <span className="ml-2 text-[12px] font-medium text-ink-2">≈ {fmt(previewLh)} l/h</span>
+            )}
+          </span>
+        </div>
+      )}
+
+      <Eyebrow>Tankstopp (optional)</Eyebrow>
+      <div className="grid grid-cols-2 gap-2.5">
+        <Field label="Treibstoff (l)">
+          <NumberInput value={s.fuelLiters} onChange={(v) => set('fuelLiters', v)} step="0.1" />
+        </Field>
+        <Field label="Kosten (CHF)">
+          <NumberInput value={s.fuelCostChf} onChange={(v) => set('fuelCostChf', v)} step="0.05" />
+        </Field>
+      </div>
+      {fuelLonely && (
+        <div className="-mt-2 mb-3.5 text-[11px] text-ink-3">
+          Tipp: bei einem Tankstopp gern Liter <em>und</em> Kosten erfassen – beides bleibt optional.
+        </div>
+      )}
+
+      <Field label="Bezahlt durch (optional)">
+        <TextInput
+          list="paidby"
+          value={s.paidBy}
+          onChange={(v) => set('paidBy', v)}
+          placeholder="Name…"
+        />
+      </Field>
+      <datalist id="paidby">
+        {knownPaidBy.map((p) => (
+          <option key={p} value={p} />
+        ))}
+      </datalist>
+
+      <Field label="Benutzung / Bemerkung (optional)">
         <textarea
           value={s.notes}
           onChange={(e) => set('notes', e.target.value)}
-          placeholder="Wetter, Wartung, Notizen…"
+          placeholder="Wer, Zweck, Wartung, Notizen…"
           rows={3}
           className="w-full resize-none rounded-xl border border-line bg-surface-2 px-3.5 py-3 text-[15px] text-ink placeholder:text-ink-3 outline-none focus:border-teal"
         />
@@ -230,10 +245,10 @@ export function FormScreen({
       <button
         onClick={handleSubmit}
         disabled={saving}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-60"
       >
         <IconSave />
-        {saving ? 'Speichert…' : 'Törn speichern'}
+        {saving ? 'Speichert…' : 'Eintrag speichern'}
       </button>
       <p className="mt-3.5 text-center text-[11px] text-ink-3">
         Gespeichert in Google Sheets · Wetter wird automatisch ergänzt
@@ -267,7 +282,7 @@ function Field({
 }
 
 const inputCls =
-  'w-full rounded-xl border border-line bg-surface-2 px-3.5 py-3 text-[15px] text-ink placeholder:text-ink-3 outline-none focus:border-teal'
+  'w-full min-h-11 rounded-xl border border-line bg-surface-2 px-3.5 py-3 text-[15px] text-ink placeholder:text-ink-3 outline-none focus:border-teal'
 const monoCls = `${inputCls} tabnum font-mono font-semibold`
 
 function TextInput({
@@ -296,12 +311,10 @@ function TextInput({
 function NumberInput({
   value,
   onChange,
-  placeholder,
   step,
 }: {
   value: string
   onChange: (v: string) => void
-  placeholder?: string
   step?: string
 }) {
   return (
@@ -309,18 +322,6 @@ function NumberInput({
       type="number"
       inputMode="decimal"
       step={step}
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      className={monoCls}
-    />
-  )
-}
-
-function DateTimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <input
-      type="datetime-local"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={monoCls}

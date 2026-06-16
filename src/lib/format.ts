@@ -22,48 +22,46 @@ function pad(n: number): string {
   return n < 10 ? `0${n}` : String(n)
 }
 
+/** YYYY-MM-DD → lokales Date (Mitternacht). Ungültig → null. */
+function parseLocalDate(date: string): Date | null {
+  const s = String(date).slice(0, 10)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return null
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return isNaN(d.getTime()) ? null : d
+}
+
 /** "SA 14.06.2026" */
-export function formatDateShort(iso: string): string {
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return '—'
+export function formatDateShort(date: string): string {
+  const d = parseLocalDate(date)
+  if (!d) return '—'
   return `${WEEKDAYS_SHORT[d.getDay()]} ${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
-/** "SAMSTAG · 14.06.2026 · 09:40 – 16:20" */
-export function formatDetailDate(startIso: string, endIso: string): string {
-  const d = new Date(startIso)
-  if (isNaN(d.getTime())) return '—'
-  const day = `${WEEKDAYS_LONG[d.getDay()]} · ${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
-  return `${day} · ${formatTimeRange(startIso, endIso)}`
+/** "SAMSTAG · 14.06.2026" */
+export function formatDateLong(date: string): string {
+  const d = parseLocalDate(date)
+  if (!d) return '—'
+  return `${WEEKDAYS_LONG[d.getDay()]} · ${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
-/** "09:40 – 16:20" */
-export function formatTimeRange(startIso: string, endIso: string): string {
-  return `${formatTime(startIso)} – ${formatTime(endIso)}`
-}
-
-/** "09:40" */
-export function formatTime(iso: string): string {
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return '--:--'
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-/** Zahl mit fixen Nachkommastellen, '—' bei null. */
+/** Zahl mit fixen Nachkommastellen, '–' bei null. */
 export function fmt(n: number | null, digits = 1): string {
-  return n === null ? '—' : n.toFixed(digits)
+  return n === null ? '–' : n.toFixed(digits)
 }
 
-/** ISO (UTC) → "YYYY-MM-DDTHH:mm" in lokaler Zeit (für <input type=datetime-local>). */
-export function isoToLocalInput(iso: string): string {
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return ''
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+/** Windrichtung Grad → 8-Punkt-Kompass. Leer/ungültig → ''. */
+export function compass(dir: unknown): string {
+  const n = toNum(dir)
+  if (n === null) return ''
+  const pts = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+  return pts[((Math.round(n / 45) % 8) + 8) % 8]
 }
 
-/** "YYYY-MM-DDTHH:mm" (lokal) → ISO (UTC). Leer/ungültig → ''. */
-export function localInputToIso(local: string): string {
-  if (!local) return ''
-  const d = new Date(local)
-  return isNaN(d.getTime()) ? '' : d.toISOString()
+/** Wind als "8 kn SW" bzw. "8 kn" (ohne Richtung) bzw. "–" (kein Wert). */
+export function formatWind(kn: unknown, dir: unknown): string {
+  const k = toNum(kn)
+  if (k === null) return '–'
+  const c = compass(dir)
+  return c ? `${fmt(k, 0)} kn ${c}` : `${fmt(k, 0)} kn`
 }

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="de" data-mode="day" data-accent="navy">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bordbuch · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#E6EDF2;--amb:#cfdae2;--surface:#FFFFFF;--surface-2:#F2F6F9;--ink:#0A2233;--ink-2:#52708A;--ink-3:#86A0B4;--line:#D5E0E8;--accent:#FF5A1F;--teal:#0C7C82;--teal-soft:#E2F1F2;--good:#15935E;--bezel:#C4D2DC;--shadow:0 1px 0 rgba(10,34,51,.04),0 8px 24px rgba(10,34,51,.08)}
+  html[data-mode="night"]{--bg:#04101A;--amb:#020a12;--surface:#0E2030;--surface-2:#0A1A28;--ink:#DCEAF2;--ink-2:#6E8a9C;--ink-3:#4C6678;--line:#1B3346;--accent:#FF6A35;--teal:#2BC4C4;--teal-soft:#0C2A30;--good:#2FBF7E;--bezel:#16344A;--shadow:0 8px 28px rgba(0,0,0,.45)}
+  /* Akzent-Paletten (ueberschreiben --accent) */
+  html[data-accent="signal"]{--accent:#FF5A1F}
+  html[data-accent="rot"]{--accent:#C5283D}
+  html[data-accent="messing"]{--accent:#B5852A}
+  html[data-accent="navy"]{--accent:#1C5C8C}
+  html[data-mode="night"][data-accent="signal"]{--accent:#FF6A35}
+  html[data-mode="night"][data-accent="rot"]{--accent:#E0414F}
+  html[data-mode="night"][data-accent="messing"]{--accent:#D6A23E}
+  html[data-mode="night"][data-accent="navy"]{--accent:#3E8FC4}
+  .pal{display:flex;align-items:center;gap:7px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface-2);overflow-x:auto}
+  .pal .t{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);font-weight:700;flex:0 0 auto}
+  .pal button{flex:0 0 auto;display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;font-family:'Inter';padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  .pal button.on{border-color:var(--ink);color:var(--ink)}
+  .pal .sw{width:11px;height:11px;border-radius:50%;display:inline-block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(120% 90% at 50% -10%,var(--bg),var(--amb) 70%) fixed;min-height:100vh;font-family:'Inter',system-ui,sans-serif;color:var(--ink);display:flex;align-items:flex-start;justify-content:center;padding:24px 14px 40px;transition:background .35s}
+  .device{width:100%;max-width:392px;background:var(--surface);border-radius:30px;box-shadow:var(--shadow),0 0 0 9px var(--bezel),0 0 0 11px rgba(0,0,0,.06);overflow:hidden;position:relative;display:flex;flex-direction:column;height:min(860px,94vh);transition:background .35s}
+  .topbar{padding:16px 18px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);background:var(--surface)}
+  .brand{flex:1;line-height:1}
+  .brand .name{font-family:'Barlow Condensed';font-weight:700;letter-spacing:.14em;font-size:21px}
+  .brand .sub{font-size:11px;color:var(--ink-2);letter-spacing:.04em;margin-top:3px;display:flex;align-items:center;gap:6px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+  .toggle{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px;display:flex;gap:2px;cursor:pointer}
+  .toggle span{font-size:11px;font-weight:600;letter-spacing:.05em;padding:5px 9px;border-radius:999px;color:var(--ink-3)}
+  html[data-mode="day"] .toggle .t-day{background:var(--accent);color:#fff}
+  html[data-mode="night"] .toggle .t-night{background:var(--teal);color:#04101A}
+  .screens{flex:1;overflow-y:auto;padding:18px 16px 24px}
+  .eyebrow{font-family:'Barlow Condensed';text-transform:uppercase;letter-spacing:.18em;font-size:12px;color:var(--ink-2);font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+  .eyebrow.mt{margin-top:24px}
+
+  .gauges{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .gauge{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:14px 14px 13px;position:relative;overflow:hidden}
+  .gauge::before{content:"";position:absolute;top:0;left:14px;right:14px;height:2px;background:linear-gradient(90deg,var(--teal),transparent);border-radius:2px}
+  .gauge.hot::before{background:linear-gradient(90deg,var(--accent),transparent)}
+  .gauge .lab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-2);font-weight:600;margin-bottom:8px}
+  .gauge .val{font-family:'JetBrains Mono';font-weight:700;font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+  .gauge .unit{font-size:12px;color:var(--ink-2);font-weight:500;margin-left:3px;font-family:'Inter'}
+  .gauge .tick{position:absolute;bottom:11px;right:13px;font-size:10px;color:var(--ink-3);font-family:'JetBrains Mono';letter-spacing:.04em}
+
+  .strip{display:flex;gap:9px}
+  .strip .box{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:11px 12px;text-align:center}
+  .strip .box .lab{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2);font-weight:600;margin-bottom:6px}
+  .strip .box .v{font-family:'JetBrains Mono';font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .strip .box .v small{font-size:10px;color:var(--ink-2);font-weight:500}
+
+  .panel{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:14px 15px 12px}
+  .panel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+  .panel-head .lab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-2);font-weight:600}
+  .panel-head .now{font-family:'JetBrains Mono';font-weight:700;font-size:15px}
+  .panel-head .now small{font-size:10px;color:var(--ink-2);font-weight:500}
+  .seg{display:flex;gap:5px;margin-bottom:16px}
+  .seg button{flex:1;font-size:11px;font-weight:600;padding:7px 4px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;font-family:'Inter'}
+  .seg button.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+  .chart{display:flex;align-items:flex-end;gap:5px;height:118px;position:relative;padding-top:4px}
+  .chart .avgline{position:absolute;left:0;right:0;border-top:1.5px dashed var(--accent);opacity:.7}
+  .chart .avgline span{position:absolute;right:0;top:-15px;font-family:'JetBrains Mono';font-size:9px;color:var(--accent);font-weight:700;background:var(--surface-2);padding:0 3px}
+  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;cursor:pointer}
+  .bar i{width:100%;max-width:18px;background:var(--teal);border-radius:3px 3px 0 0;display:block;transition:height .3s}
+  .bar.peak i{background:var(--accent)}
+  .bar.sel i{outline:2px solid var(--ink);outline-offset:1px}
+  .bar em{font-family:'JetBrains Mono';font-size:8px;color:var(--ink-3);transform:rotate(-90deg);height:24px;display:flex;align-items:center;white-space:nowrap}
+  .bar b{font-family:'JetBrains Mono';font-size:8px;color:var(--ink-2);font-weight:700}
+
+  .yrchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+  .yrchip{flex:0 0 auto;font-family:'JetBrains Mono';font-size:12px;font-weight:700;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  .yrchip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+  .ydetail{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .ydetail .hd{padding:12px 15px;display:flex;justify-content:space-between;align-items:baseline}
+  .ydetail .hd .y{font-family:'Barlow Condensed';font-size:26px;font-weight:700;line-height:1}
+  .ydetail .hd .s{font-size:11px;color:var(--ink-2)}
+  .yrows{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-top:1px solid var(--line)}
+  .ycell{background:var(--surface-2);padding:11px 15px}
+  .ycell .k{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);font-weight:600;margin-bottom:4px}
+  .ycell .v{font-family:'JetBrains Mono';font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+  .ycell .v small{font-size:10px;color:var(--ink-2);font-weight:500}
+  .delta{font-size:10px;font-weight:700;font-family:'JetBrains Mono';margin-left:6px}
+  .delta.up{color:var(--good)} .delta.down{color:var(--accent)}
+
+  .nav{display:flex;border-top:1px solid var(--line);background:var(--surface);padding:8px}
+  .nav button{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 0;color:var(--ink-3);font-size:11px;font-weight:600;font-family:'Inter'}
+  .nav button.on{color:var(--accent)}
+  .nav .fab{color:#fff;background:var(--accent);margin:-22px 6px 0;max-width:62px;border-radius:18px;box-shadow:0 8px 18px rgba(255,90,31,.4);padding:11px 0 9px}
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="topbar">
+    <div class="brand"><div class="name">BORDBUCH</div><div class="sub"><span class="dot"></span> Ascona · Lago Maggiore</div></div>
+    <div class="toggle" onclick="document.documentElement.dataset.mode=document.documentElement.dataset.mode==='night'?'day':'night'">
+      <span class="t-day">☀ Tag</span><span class="t-night">☾ Nacht</span>
+    </div>
+  </div>
+
+  <div class="pal">
+    <span class="t">Akzent</span>
+    <button data-a="navy" onclick="setAccent(this)"><span class="sw" style="background:#1C5C8C"></span>Marine</button>
+    <button data-a="rot" onclick="setAccent(this)"><span class="sw" style="background:#C5283D"></span>Rot</button>
+    <button data-a="messing" onclick="setAccent(this)"><span class="sw" style="background:#B5852A"></span>Messing</button>
+    <button data-a="signal" onclick="setAccent(this)"><span class="sw" style="background:#FF5A1F"></span>Orange</button>
+  </div>
+
+  <div class="screens">
+    <!-- 1) TOTAL -->
+    <div class="eyebrow">Total · 2017–2026</div>
+    <div class="gauges">
+      <div class="gauge"><div class="lab">Betriebsstunden</div><div class="val">199.8<span class="unit">h</span></div><div class="tick">seit start</div></div>
+      <div class="gauge hot"><div class="lab">Ø Verbrauch</div><div class="val">18.9<span class="unit">l/h</span></div><div class="tick">exakt</div></div>
+      <div class="gauge"><div class="lab">Treibstoffkosten</div><div class="val">7'099<span class="unit">CHF</span></div><div class="tick">3'770 l</div></div>
+      <div class="gauge"><div class="lab">Einträge</div><div class="val">34</div><div class="tick">10 saisons</div></div>
+    </div>
+
+    <!-- 2) DURCHSCHNITT PRO JAHR -->
+    <div class="eyebrow mt">Ø pro Jahr</div>
+    <div class="strip">
+      <div class="box"><div class="lab">Ø Stunden</div><div class="v">20.0<small> h</small></div></div>
+      <div class="box"><div class="lab">Ø Einträge</div><div class="v">3.4</div></div>
+      <div class="box"><div class="lab">Ø Kosten</div><div class="v">710<small> CHF</small></div></div>
+    </div>
+
+    <!-- 3) PRO JAHR (Chart) -->
+    <div class="eyebrow mt">Pro Jahr</div>
+    <div class="panel">
+      <div class="panel-head"><span class="lab" id="p-lab"></span><span class="now" id="p-tot"></span></div>
+      <div class="seg">
+        <button class="on" onclick="setMetric('hours',this)">Motor h</button>
+        <button onclick="setMetric('events',this)">Einträge</button>
+        <button onclick="setMetric('fuel',this)">Treibstoff</button>
+      </div>
+      <div class="chart" id="chart"></div>
+    </div>
+
+    <!-- 4) EINZELJAHR IM DETAIL -->
+    <div class="eyebrow mt">Jahr im Detail</div>
+    <div class="yrchips" id="yrchips"></div>
+    <div class="ydetail">
+      <div class="hd"><span class="y" id="d-year"></span><span class="s" id="d-sub"></span></div>
+      <div class="yrows">
+        <div class="ycell"><div class="k">Betriebsstunden</div><div class="v" id="d-h"></div></div>
+        <div class="ycell"><div class="k">Einträge</div><div class="v" id="d-e"></div></div>
+        <div class="ycell"><div class="k">Treibstoff</div><div class="v" id="d-l"></div></div>
+        <div class="ycell"><div class="k">Kosten</div><div class="v" id="d-c"></div></div>
+        <div class="ycell"><div class="k">≈ Verbrauch</div><div class="v" id="d-lph"></div></div>
+        <div class="ycell"><div class="k">Kosten / h</div><div class="v" id="d-chfh"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>Dashboard</button>
+    <button><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Logbuch</button>
+    <button class="fab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Neu</button>
+  </nav>
+</div>
+
+<script>
+  const years=[2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
+  const hrs=[30.5,26.3,23.0,15.2,18.8,25.2,20.9,5.5,19.6,14.8];
+  const evt=[11,4,4,3,3,3,3,1,1,1];
+  const lit=[795.4,555.0,502.9,274.7,358.1,464.2,245.6,0,303.8,270.3];
+  const chf=[1369,1032,735,451,673,1114,538,0,586,600];
+  const AVG_H=20.0;
+  const M={
+    hours:{lab:'Betriebsstunden / Jahr',vals:hrs,fmt:v=>v.toFixed(1),tot:'199.8 h'},
+    events:{lab:'Einträge / Jahr',vals:evt,fmt:v=>String(v),tot:'34'},
+    fuel:{lab:'Treibstoff CHF / Jahr',vals:chf,fmt:v=>v?('CHF '+v):'–',tot:"CHF 7'099"}
+  };
+  let sel=years.length-1; // default: letztes Jahr
+
+  function setMetric(key,btn){
+    document.querySelectorAll('.seg button').forEach(b=>b.classList.remove('on'));
+    if(btn)btn.classList.add('on');
+    const m=M[key],max=Math.max(...m.vals),sum=m.vals.reduce((a,b)=>a+b,0),avg=sum/m.vals.length;
+    document.getElementById('p-lab').textContent=m.lab;
+    document.getElementById('p-tot').innerHTML=m.tot+' <small>gesamt</small>';
+    const c=document.getElementById('chart');
+    c.innerHTML='<div class="avgline" style="bottom:'+(avg/max*86+6)+'%"><span>Ø '+m.fmt(Math.round(avg*10)/10)+'</span></div>';
+    m.vals.forEach((v,i)=>{
+      const h=max?Math.max(v/max*100,2):2,peak=v===max&&v>0;
+      c.innerHTML+='<div class="bar'+(peak?' peak':'')+(i===sel?' sel':'')+'" onclick="selectYear('+i+')">'+
+        '<em>'+m.fmt(v)+'</em><i style="height:'+h+'%"></i><b>'+String(years[i]).slice(2)+'</b></div>';
+    });
+  }
+  function selectYear(i){
+    sel=i;
+    document.querySelectorAll('.yrchip').forEach((c,k)=>c.classList.toggle('on',k===i));
+    document.querySelectorAll('.bar').forEach((b,k)=>b.classList.toggle('sel',k===i));
+    const h=hrs[i],e=evt[i],l=lit[i],c=chf[i];
+    const lph=h?(l/h):null, chfh=h?(c/h):null, dh=h-AVG_H;
+    document.getElementById('d-year').textContent=years[i];
+    document.getElementById('d-sub').textContent=(e===1?'1 Eintrag':e+' Einträge');
+    const dcls=dh>=0?'up':'down', dtxt=(dh>=0?'+':'')+dh.toFixed(1)+' h';
+    document.getElementById('d-h').innerHTML=h.toFixed(1)+' <small>h</small><span class="delta '+dcls+'">'+dtxt+' vs Ø</span>';
+    document.getElementById('d-e').textContent=e;
+    document.getElementById('d-l').innerHTML=l?(l.toFixed(0)+' <small>l</small>'):'–';
+    document.getElementById('d-c').innerHTML=c?("CHF "+c):'–';
+    document.getElementById('d-lph').innerHTML=lph?('≈ '+lph.toFixed(1)+' <small>l/h</small>'):'–';
+    document.getElementById('d-chfh').innerHTML=chfh?(chfh.toFixed(1)+' <small>CHF</small>'):'–';
+  }
+  // Jahres-Chips bauen
+  document.getElementById('yrchips').innerHTML=years.map((y,i)=>
+    '<span class="yrchip'+(i===sel?' on':'')+'" onclick="selectYear('+i+')">'+y+'</span>').join('');
+
+  function setAccent(btn){
+    document.documentElement.dataset.accent=btn.dataset.a;
+    document.querySelectorAll('.pal button').forEach(b=>b.classList.toggle('on',b===btn));
+  }
+  // init active palette chip
+  document.querySelectorAll('.pal button').forEach(b=>b.classList.toggle('on',b.dataset.a===document.documentElement.dataset.accent));
+
+  setMetric('hours',null);
+  selectYear(sel);
+</script>
+</body>
+</html>
