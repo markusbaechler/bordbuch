@@ -29,8 +29,9 @@ const BASE_HARBORS = [
   'Luino',
 ]
 
-function uniqueNonEmpty(values: string[]): string[] {
-  return [...new Set(values.map((v) => v?.trim()).filter((v): v is string => Boolean(v)))]
+function uniqueNonEmpty(values: unknown[]): string[] {
+  // defensiv: String(v) statt v.trim(), falls das Sheet doch mal eine Zahl liefert
+  return [...new Set(values.map((v) => String(v ?? '').trim()).filter((v) => v.length > 0))]
 }
 
 export default function App() {

@@ -42,12 +42,12 @@ function fromEntry(e: Entry): FormState {
   return {
     date: e.date,
     harborFrom: e.harborFrom,
-    harborTo: e.harborTo ?? '',
-    engineHours: String(toNum(e.engineHours) ?? ''),
-    fuelLiters: e.fuelLiters === '' ? '' : String(toNum(e.fuelLiters) ?? ''),
-    fuelCostChf: e.fuelCostChf === '' ? '' : String(toNum(e.fuelCostChf) ?? ''),
-    paidBy: e.paidBy ?? '',
-    notes: e.notes ?? '',
+    harborTo: e.harborTo,
+    engineHours: e.engineHours === null ? '' : String(e.engineHours),
+    fuelLiters: e.fuelLiters === null ? '' : String(e.fuelLiters),
+    fuelCostChf: e.fuelCostChf === null ? '' : String(e.fuelCostChf),
+    paidBy: e.paidBy,
+    notes: e.notes,
   }
 }
 
