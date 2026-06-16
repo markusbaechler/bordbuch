@@ -1,3 +1,6 @@
+/** Bootsname + Standort – hier zentral änderbar. */
+const BOAT = { name: 'Regal', location: 'Ascona · Lago Maggiore' } as const
+
 /** Kopfzeile: Markenname + Tag/Nacht-Umschalter (echtes Feature, CLAUDE.md §7). */
 export function Topbar({
   mode,
@@ -14,7 +17,7 @@ export function Topbar({
         </div>
         <div className="mt-[3px] flex items-center gap-1.5 text-[11px] tracking-wide text-ink-2">
           <span className="h-1.5 w-1.5 rounded-full bg-teal shadow-[0_0_0_3px_var(--teal-soft)]" />
-          MY «Seeluft» · Zürichsee
+          {BOAT.name} · {BOAT.location}
         </div>
       </div>
       <button
