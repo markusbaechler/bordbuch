@@ -242,6 +242,11 @@ const MONTH_TICKS: ChartXTick[] = [
   { x: 305, label: 'Nov' },
 ]
 
+// Unterscheidbare (aber gedämpfte) Farben für die Vorjahre – damit die Legende
+// den Linien zuordenbar ist. Funktionieren in Tag und Nacht.
+const PAST_COLORS = ['var(--teal)', '#D99441', '#B98AE0', '#7FB069']
+const pastColor = (i: number) => PAST_COLORS[i % PAST_COLORS.length]
+
 function doyOf(dateStr: string): number {
   const d = new Date(dateStr)
   const start = Date.UTC(d.getUTCFullYear(), 0, 0)
@@ -306,9 +311,9 @@ function WaterHistory() {
 
   const { currentYear: cur, pastYears: past } = data
   const series: ChartSeries[] = [
-    ...past.map((py) => ({
+    ...past.map((py, i) => ({
       points: py.daily.map((d) => ({ x: d.doy, y: d.t })),
-      color: 'var(--ink-3)',
+      color: pastColor(i),
       emphasized: false,
     })),
     {
@@ -327,8 +332,8 @@ function WaterHistory() {
       <LineChart series={series} marker={marker} xTicks={MONTH_TICKS} formatY={(v) => v.toFixed(0)} />
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
         <LegendItem color="var(--accent)" label={`${cur.year} (aktuell)`} />
-        {past.map((py) => (
-          <LegendItem key={py.year} color="var(--ink-3)" label={String(py.year)} />
+        {past.map((py, i) => (
+          <LegendItem key={py.year} color={pastColor(i)} label={String(py.year)} />
         ))}
       </div>
       <ChartFoot>°C Oberfläche · Alplakes (Simstrat) · Jahres-Höchstwert markiert</ChartFoot>

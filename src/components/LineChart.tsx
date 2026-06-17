@@ -153,7 +153,7 @@ export function LineChart({
           fill="none"
           stroke={s.color ?? 'var(--accent)'}
           strokeWidth={s.emphasized ? 2 : 1.3}
-          strokeOpacity={s.emphasized ? 1 : 0.55}
+          strokeOpacity={s.emphasized ? 1 : 0.75}
           strokeLinejoin="round"
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
