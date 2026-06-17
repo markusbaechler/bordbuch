@@ -38,6 +38,7 @@ jobs:
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_API_TOKEN: ${{ secrets.VITE_API_TOKEN }}
+          VITE_WATERTEMP_URL: ${{ secrets.VITE_WATERTEMP_URL }}
         run: npm run build
 
       - name: Setup Pages
