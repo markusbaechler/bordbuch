@@ -1,6 +1,25 @@
+import type { SVGProps } from 'react'
 import { IconDashboard, IconList, IconPlus } from './icons'
 
-export type Screen = 'dash' | 'list' | 'detail' | 'new'
+export type Screen = 'conditions' | 'dash' | 'list' | 'detail' | 'new'
+
+/** Kompass-Icon für den „Wetter"-Tab (inline, ohne Eingriff in icons.tsx). */
+function IconCompass(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      {...p}
+    >
+      <circle cx="12" cy="12" r="9" />
+      <polygon points="12,7 14.5,14.5 12,13 9.5,14.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
 
 /** Untere Navigation mit zentralem FAB für „Neu". */
 export function BottomNav({
@@ -12,6 +31,12 @@ export function BottomNav({
 }) {
   return (
     <nav className="flex border-t border-line bg-surface px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      <NavButton
+        label="Wetter"
+        active={active === 'conditions'}
+        onClick={() => onNavigate('conditions')}
+        icon={<IconCompass />}
+      />
       <NavButton
         label="Dashboard"
         active={active === 'dash'}

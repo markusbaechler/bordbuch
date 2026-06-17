@@ -3,6 +3,7 @@ import { ToastProvider, useToast } from './components/Toast'
 import { Topbar } from './components/Topbar'
 import { BottomNav, type Screen } from './components/BottomNav'
 import { Spinner } from './components/Spinner'
+import { ConditionsScreen } from './screens/ConditionsScreen'
 import { ListScreen } from './screens/ListScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { DetailScreen } from './screens/DetailScreen'
@@ -45,7 +46,7 @@ export default function App() {
 function Shell() {
   const toast = useToast()
   const { mode, toggle: toggleMode } = useThemeMode()
-  const [screen, setScreen] = useState<Screen>('list')
+  const [screen, setScreen] = useState<Screen>('conditions')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editing, setEditing] = useState<Entry | null>(null)
   const [saving, setSaving] = useState(false)
@@ -135,6 +136,8 @@ function Shell() {
         {loading && <Spinner label="Lade Einträge…" />}
 
         {!loading && error && <ErrorPanel message={error} onRetry={reload} />}
+
+        {!loading && !error && screen === 'conditions' && <ConditionsScreen />}
 
         {!loading && !error && screen === 'list' && (
           <ListScreen entries={entries} hours={hours} consumption={consumption} onSelect={openDetail} />
