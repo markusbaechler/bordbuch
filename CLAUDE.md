@@ -1,7 +1,8 @@
-# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v2 (aktualisiert: Dashboard 3-stufig, Akzent Marineblau)
+# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v3 (Live-Conditions „Vor der Abfahrt", History-Modals, PWA)
 
-WICHTIG: Dies ersetzt die alte Spec. Das Frontend existiert teilweise schon und muss
-auf dieses Modell **refactored** werden. Das Backend (Code.gs v2) ist fertig.
+WICHTIG: Logbuch/CRUD/Dashboard (§1–§11) sind umgesetzt. v3 ergänzt das Feature
+**„Vor der Abfahrt"** (Live-Wetter/Pegel/Wassertemperatur, §14), die **History-Modals**
+(§14) und die **PWA**-Fähigkeit (§15). Backend (Code.gs v2, CRUD) unverändert.
 
 ## 1. Ziel
 Mobile-first Logbuch für ein Motorboot in **Ascona, Lago Maggiore**. Nutzung am
@@ -12,6 +13,9 @@ bestehende Apps-Script-Web-App. Volles CRUD. (Bootsname: noch offen → Platzhal
 Vite + React + TS + Tailwind, statisch auf GitHub Pages. API = Google Apps Script
 (fertig). Speicher = Google Sheets. Auto-Deploy via GitHub Actions auf Push nach `main`.
 Keine andere DB, kein Server, kein Firebase. **Keine Foto-Uploads** (vorerst).
+Installierbar als **PWA** (Manifest + Service Worker, §15). Live-Conditions (§14) kommen
+direkt von keylosen CORS-APIs (Open-Meteo, existenz.ch); die Wassertemperatur (Alplakes,
+kein CORS) läuft über einen separaten Apps-Script-Read-Proxy (`Code.proxy.gs`).
 
 ## 3. API-Vertrag (Backend ist fertig, nicht ändern)
 Antworten: `{ ok, data?, error? }`.
@@ -73,6 +77,8 @@ Einträge nach `date` aufsteigend sortieren, dann:
    - **(d) Einzeljahr im Detail**: Jahr per Chips/Balken wählbar → Betriebsstunden
      (+Δ gegenüber Ø), Einträge, Liter, CHF, ≈ l/h, CHF/h.
 5. Status klar: Spinner, Toast bei Erfolg/Fehler.
+6. **Vor der Abfahrt (Wetter)** – Live-Conditions für Locarno (Details §14). Das ist
+   der **Start-Screen** der App (erster Tab in der Bottom-Nav, Kompass-Icon).
 
 UX-Detail: Neuer Eintrag → `harborFrom` mit "Ascona, Porto Patriziale" vorbefüllen,
 `engineHours` mit dem letzten (höchsten) Zählerstand als Vorschlag.
@@ -91,12 +97,16 @@ als Default), mobile-first, full-bleed (KEIN Geräterahmen), grosse Touch-Target
 - Fonts: Barlow Condensed (Display), Inter (UI), JetBrains Mono (Zahlen, tabular-nums).
 
 ## 8. Tech / Config
-Env: `VITE_API_URL`, `VITE_API_TOKEN`. `.env` gitignored (echte Werte), `.env.example`
-NUR Platzhalter. `vite.config.ts` base `/bordbuch/`. API-Client als dünner Wrapper über
-das `{ok,data,error}`-Envelope. Sauberer Code, Kommentare nur an komplexen Stellen.
+Env: `VITE_API_URL`, `VITE_API_TOKEN` (CRUD-Backend) und `VITE_WATERTEMP_URL`
+(Wassertemp-Proxy, §14). `.env` gitignored (echte Werte), `.env.example` NUR Platzhalter.
+`vite.config.ts` base `/bordbuch/`. API-Client als dünner Wrapper über das
+`{ok,data,error}`-Envelope. Sauberer Code, Kommentare nur an komplexen Stellen.
 
 ## 9. Deployment
-GitHub Actions → Pages (Source = "GitHub Actions"). Secrets im Build als env injizieren.
+GitHub Actions → Pages (Source = "GitHub Actions"). Drei Secrets im Build als env
+injizieren: `VITE_API_URL`, `VITE_API_TOKEN`, `VITE_WATERTEMP_URL` (`.github/workflows/deploy.yml`).
+Der Wassertemp-Proxy (`Code.proxy.gs`) ist ein **separates** Apps Script und wird
+eigenständig deployt (nicht Teil des Pages-Builds, §14).
 
 ## 10. Refactor-Auftrag
 Bestehendes Frontend auf dieses Modell umbauen:
@@ -114,7 +124,54 @@ Bestehendes Frontend auf dieses Modell umbauen:
 Nur Sheets, keine Fotos (vorerst), ein Boot. Token im Frontend bewusst akzeptiert.
 
 ## 12. Backlog
-Foto-Upload via Drive (Stundenzähler + Beleg), Offline-Cache, PDF-Export, Login-Härtung.
+Foto-Upload via Drive (Stundenzähler + Beleg), PDF-Export, Login-Härtung,
+Pegel-Jahresvergleich (`level-year` via existenz InfluxDB, optional).
+Erledigt: Offline-Cache (jetzt via PWA-Service-Worker, §15).
 
 ## 13. Sicherheit
 .env nie committen, echte Werte nur in .env (lokal) + GitHub Secrets.
+Der Wassertemp-Proxy bekommt bewusst KEIN Token (read-only, nur öffentliche Seedaten).
+
+## 14. Live-Conditions „Vor der Abfahrt" (v3)
+Visuelle Vorlage: Mockup `bordbuch-conditions.html`.
+Screen `src/screens/ConditionsScreen.tsx`, Hook `src/hooks/useConditions.ts`,
+Daten-Clients `src/lib/liveData.ts` (Wind + Pegel, direkt) und `src/lib/waterTemp.ts`
+(Wassertemp, via Proxy). Jede Quelle scheitert unabhängig (`Promise.allSettled` / try-catch).
+
+**Datenquellen:**
+- **Wind/Wetter** – Open-Meteo (keylos, CORS), Direktaufruf. Ampel nach **Böen** (nicht
+  mittlerem Wind), kn: grün < 16, gelb 16–27, rot ≥ 27 oder Gewitter (WMO 95–99 jetzt
+  oder in 12 h). Lokalwinde nach Richtung: Süd 135–225° → „Inverna", Nord ≤45°/≥315° →
+  „Tramontana". Ampel-Hintergründe (kein Token!): good `var(--good)`, warn `#E8930C`,
+  bad `#D8352A`.
+- **Seepegel** – existenz.ch (BAFU), Station 2022 „Lago Maggiore – Locarno", keylos/CORS,
+  direkt. Hochwasser-Referenz `HW_LEVEL_MASL = 195.75` m ü.M. (Gefahrenstufe 5).
+- **Wassertemperatur** – Alplakes Simstrat-1D (Eawag). **Kein CORS** → nur über den
+  Proxy (`VITE_WATERTEMP_URL`). Fallback: saisonaler Monats-Schätzwert. UI-Label
+  „● live · Alplakes (Simstrat)" bzw. „✎ Saison-Schätzung".
+
+**History-Modals** (`src/components/Modal.tsx` + selbstgezeichneter `src/components/LineChart.tsx`,
+keine Chart-Lib): Kacheln sind antippbar und öffnen je ein Liniendiagramm.
+- Wind: Böen −48 h…+48 h, WARN-Linie 16 kn, „jetzt"-Marke.
+- Seepegel: 30-Tage-Linie + Hochwasser-Referenzlinie + „Abstand zur Hochwassergrenze".
+- Wassertemp: Jahresvergleich (aktuelles Jahr hervorgehoben + Vorjahre je eigene Farbe)
+  + Jahres-Höchstwert-Marker.
+
+**Proxy `Code.proxy.gs`** (separates Apps Script „Bordbuch Wassertemp", read-only,
+serverseitige Tagesaggregate + Cache). `?type=`-Zweige: `watertemp` (Einzelwert),
+`watertemp-series&days=N` (Tagesreihe, Cache 3 h), `watertemp-year` (aktuelles Jahr +
+Höchstwert + `PAST_YEARS=3` Vorjahre, Cache 24 h). Nach Änderung als **neue Version**
+deployen.
+
+## 15. PWA
+Installierbar (Manifest + Service Worker), ohne neue npm-Abhängigkeit.
+- `public/manifest.webmanifest` – `display: standalone`, Theme/Background `#04101A`,
+  relative Pfade (funktionieren in Dev unter `/` und auf Pages unter `/bordbuch/`).
+- `public/sw.js` – network-first für Navigationen (Offline-App-Shell), stale-while-revalidate
+  für Assets; Live-Daten/Fonts werden NICHT gecacht. Registrierung in `src/main.tsx`
+  nur im Production-Build, base-pfad-bewusst.
+- Icons via `scripts/gen-icons.mjs` (dependency-freier PNG-Generator, Kompass-Motiv):
+  `node scripts/gen-icons.mjs` schreibt `public/icon-192|512.png`, `maskable-512.png`,
+  `apple-touch-icon.png`, `favicon-32.png`.
+- Layout ist eine fixe App-Shell (`h-dvh`, `body { overflow:hidden }`); nur `main` scrollt,
+  Topbar/Bottom-Nav bleiben immer sichtbar.

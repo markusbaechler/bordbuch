@@ -4,7 +4,11 @@ Mobile-first Logbuch-App für ein Motorboot in **Ascona, Lago Maggiore**, Bedien
 Steuerstand. Alle Daten liegen in einer Google-Tabelle; der Zugriff läuft über eine
 bestehende Google-Apps-Script-Web-App. Volles CRUD, 3-stufiges Dashboard, Tag-/Nacht-Modus.
 
-**Stack:** Vite · React · TypeScript · Tailwind CSS v4 · Deploy via GitHub Pages.
+Dazu **„Vor der Abfahrt"** (Start-Tab): Live-Wind/Böen mit Ampel, Seepegel und
+Wassertemperatur für Locarno, mit antippbaren Verlaufs-Diagrammen (Wind ±48 h,
+Pegel 30 Tage, Wassertemp-Jahresvergleich). Installierbar als **PWA**.
+
+**Stack:** Vite · React · TypeScript · Tailwind CSS v4 · PWA · Deploy via GitHub Pages.
 
 ---
 
@@ -18,12 +22,13 @@ cp .env.example .env      # danach echte Werte eintragen
 npm run dev               # läuft auf http://localhost:5173/bordbuch/
 ```
 
-Die App braucht zwei Umgebungsvariablen (Vite-Konvention `VITE_*`):
+Die App nutzt diese Umgebungsvariablen (Vite-Konvention `VITE_*`):
 
-| Variable | Bedeutung |
-|---|---|
-| `VITE_API_URL` | Die `/exec`-URL der Apps-Script-Web-App |
-| `VITE_API_TOKEN` | Das Shared Secret (muss mit `API_TOKEN` im Apps Script übereinstimmen) |
+| Variable | Pflicht | Bedeutung |
+|---|---|---|
+| `VITE_API_URL` | ja | Die `/exec`-URL der Apps-Script-Web-App (CRUD) |
+| `VITE_API_TOKEN` | ja | Das Shared Secret (muss mit `API_TOKEN` im Apps Script übereinstimmen) |
+| `VITE_WATERTEMP_URL` | optional | `/exec`-URL des Wassertemp-Proxys (siehe §4). Fehlt sie, fällt die Wassertemperatur auf eine Saison-Schätzung zurück. |
 
 > ⚠️ Die `.env` ist über `.gitignore` ausgeschlossen und darf **niemals** committet
 > werden. Im Repo liegt nur `.env.example` mit Platzhaltern.
@@ -55,10 +60,11 @@ git push -u origin main
 ### 2.2 Secrets setzen
 
 Repo → **Settings → Secrets and variables → Actions → New repository secret**.
-Zwei Secrets mit exakt diesen Namen anlegen:
+Diese Secrets mit exakt diesen Namen anlegen:
 
 - `VITE_API_URL` → die `/exec`-URL
 - `VITE_API_TOKEN` → das Shared Secret
+- `VITE_WATERTEMP_URL` → `/exec`-URL des Wassertemp-Proxys (optional, siehe §4)
 
 Diese werden im Workflow zur **Build-Zeit** in das Frontend eingebacken.
 
@@ -89,7 +95,52 @@ https://<dein-user>.github.io/bordbuch/
 
 ---
 
-## 4. Datenmodell & Logik (Kurzfassung)
+## 4. Live-Conditions „Vor der Abfahrt"
+
+Der Start-Tab zeigt Live-Daten für Locarno. Quellen:
+
+| Kennzahl | Quelle | Zugriff |
+|---|---|---|
+| Wind / Böen | Open-Meteo | direkt im Browser (keylos, CORS) |
+| Seepegel | existenz.ch / BAFU (Station 2022) | direkt im Browser (keylos, CORS) |
+| Wassertemperatur | Alplakes / Eawag (Simstrat-1D) | **nur über Proxy** (kein CORS) |
+
+Wind und Pegel funktionieren ohne weitere Einrichtung. Die Wassertemperatur (inkl.
+Jahresvergleich-Diagramm) braucht den **Wassertemp-Proxy** – ein eigenständiges
+Apps Script (`Code.proxy.gs` im Repo, Projekt „Bordbuch Wassertemp"):
+
+1. Script-Inhalt von `Code.proxy.gs` ins Apps-Script-Projekt übernehmen.
+2. Als **neue Version** deployen (Ausführen als: ich · Zugriff: Jeder, auch anonym).
+3. Die `/exec`-URL als `VITE_WATERTEMP_URL` in `.env` **und** als GitHub-Secret setzen.
+
+Endpunkte: `?type=watertemp` (Einzelwert), `?type=watertemp-series&days=N` (Tagesreihe),
+`?type=watertemp-year` (Jahresvergleich). Aggregate werden serverseitig gebildet und
+gecacht. Ohne diesen Proxy zeigt die App eine Saison-Schätzung statt Live-Werten.
+
+> Hinweis: Nach jeder `.env`-Änderung den Dev-Server neu starten.
+
+---
+
+## 5. PWA (installierbar)
+
+Die App ist eine Progressive Web App und lässt sich auf dem Homescreen installieren:
+
+- **Android/Chrome:** Menü → „App installieren".
+- **iOS/Safari:** Teilen → „Zum Home-Bildschirm".
+
+Sie startet dann im Vollbild mit eigenem Icon. Ein Service Worker (`public/sw.js`)
+cached die App-Shell (Offline-Start), lädt Live-Daten aber immer frisch. Der Service
+Worker ist nur im Production-Build aktiv (nicht im `npm run dev`).
+
+App-Icons neu erzeugen (dependency-frei, Kompass-Motiv):
+
+```bash
+node scripts/gen-icons.mjs   # schreibt nach public/
+```
+
+---
+
+## 6. Datenmodell & Logik (Kurzfassung)
 
 Ein Eintrag (`Entry`) entspricht einer Zeile im Tabellenblatt `Logbuch`. `engineHours`
 ist **ein** Zählerstand (Betriebsstundenzähler bei Start), `harborTo` ist Freitext.

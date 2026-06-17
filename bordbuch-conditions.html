@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bordbuch · Vor der Abfahrt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#E6EDF2; --amb:#cfdae2;
+    --surface:#FFFFFF; --surface-2:#F2F6F9;
+    --ink:#0A2233; --ink-2:#52708A; --ink-3:#86A0B4;
+    --line:#D5E0E8;
+    --accent:#FF5A1F; --teal:#0C7C82; --teal-soft:#E2F1F2;
+    --good:#15935E; --warn:#E8930C; --bad:#D8352A;
+    --bezel:#C4D2DC;
+    --shadow:0 1px 0 rgba(10,34,51,.04), 0 8px 24px rgba(10,34,51,.08);
+  }
+  html[data-mode="night"]{
+    --bg:#04101A; --amb:#020a12; --surface:#0E2030; --surface-2:#0A1A28;
+    --ink:#DCEAF2; --ink-2:#6E8a9C; --ink-3:#4C6678; --line:#1B3346;
+    --accent:#FF6A35; --teal:#2BC4C4; --teal-soft:#0C2A30;
+    --good:#2FBF7E; --warn:#F2A93B; --bad:#F0584C;
+    --bezel:#16344A; --shadow:0 8px 28px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(120% 90% at 50% -10%, var(--bg), var(--amb) 70%) fixed;
+    min-height:100vh; font-family:'Inter',system-ui,sans-serif; color:var(--ink);
+    display:flex; align-items:flex-start; justify-content:center; padding:24px 14px 40px;
+    transition:background .35s ease;
+  }
+  .device{
+    width:100%; max-width:392px; background:var(--surface); border-radius:30px;
+    box-shadow:var(--shadow), 0 0 0 9px var(--bezel), 0 0 0 11px rgba(0,0,0,.06);
+    overflow:hidden; position:relative; display:flex; flex-direction:column;
+    min-height:min(820px, 92vh); transition:background .35s ease;
+  }
+  .topbar{padding:16px 18px 12px; display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid var(--line); background:var(--surface)}
+  .brand{flex:1; line-height:1}
+  .brand .name{font-family:'Barlow Condensed';font-weight:700;letter-spacing:.14em;font-size:21px}
+  .brand .sub{font-size:11px;color:var(--ink-2);letter-spacing:.04em;margin-top:3px;
+    display:flex;align-items:center;gap:6px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--ink-3)}
+  .dot.live{background:var(--good);box-shadow:0 0 0 3px var(--teal-soft);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  .toggle{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;
+    padding:5px;display:flex;gap:2px;cursor:pointer}
+  .toggle span{font-size:11px;font-weight:600;letter-spacing:.05em;padding:5px 9px;
+    border-radius:999px;color:var(--ink-3)}
+  html[data-mode="day"] .toggle .t-day{background:var(--accent);color:#fff}
+  html[data-mode="night"] .toggle .t-night{background:var(--teal);color:#04101A}
+
+  .body{flex:1;overflow-y:auto;padding:18px 16px 24px}
+  .eyebrow{font-family:'Barlow Condensed';text-transform:uppercase;letter-spacing:.18em;
+    font-size:12px;color:var(--ink-2);font-weight:600;margin-bottom:12px;display:flex;
+    align-items:center;gap:8px}
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* Wind-Ampel (signature) */
+  .ampel{border-radius:16px;padding:16px 17px;margin-bottom:14px;color:#fff;position:relative;
+    overflow:hidden;transition:background .3s}
+  .ampel.s-good{background:var(--good)} .ampel.s-warn{background:var(--warn)} .ampel.s-bad{background:var(--bad)}
+  .ampel.s-idle{background:var(--surface-2);color:var(--ink-3)}
+  .ampel .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+  .ampel .state{font-family:'Barlow Condensed';font-size:24px;font-weight:700;letter-spacing:.02em;line-height:1}
+  .ampel .state small{display:block;font-family:'Inter';font-size:11px;font-weight:500;
+    letter-spacing:.03em;opacity:.85;margin-top:4px}
+  .ampel .compass{width:54px;height:54px;border-radius:50%;border:2px solid rgba(255,255,255,.5);
+    position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:700;font-family:'JetBrains Mono'}
+  .ampel.s-idle .compass{border-color:var(--line)}
+  .ampel .needle{position:absolute;top:3px;left:50%;width:0;height:0;border-left:4px solid transparent;
+    border-right:4px solid transparent;border-bottom:16px solid #fff;transform-origin:50% 24px;
+    margin-left:-4px;transition:transform .5s}
+  .ampel.s-idle .needle{border-bottom-color:var(--ink-3)}
+  .ampel .nums{display:flex;gap:22px}
+  .ampel .nums .b{font-family:'JetBrains Mono';font-weight:700;font-size:26px;line-height:1;
+    font-variant-numeric:tabular-nums}
+  .ampel .nums .b span{font-size:12px;font-weight:500;font-family:'Inter';opacity:.85;margin-left:2px}
+  .ampel .nums .l{font-size:10px;text-transform:uppercase;letter-spacing:.1em;opacity:.85;
+    margin-bottom:5px;font-weight:600}
+  .ampel .hint{margin-top:13px;font-size:11.5px;font-weight:500;display:flex;align-items:center;
+    gap:6px;background:rgba(255,255,255,.16);border-radius:9px;padding:8px 10px}
+  .ampel.s-idle .hint{background:var(--surface)}
+
+  /* Böen-Verlauf */
+  .panel{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;
+    padding:13px 15px 11px;margin-bottom:14px}
+  .panel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+  .panel-head .lab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-2);font-weight:600}
+  .panel-head .now{font-family:'JetBrains Mono';font-weight:700;font-size:13px;color:var(--ink)}
+  .chart{display:flex;align-items:flex-end;gap:5px;height:64px;position:relative}
+  .chart .avgline{position:absolute;left:0;right:0;border-top:1.5px dashed var(--accent);opacity:.6}
+  .chart .avgline span{position:absolute;right:0;top:-15px;font-family:'JetBrains Mono';font-size:9px;
+    color:var(--accent);font-weight:700;background:var(--surface-2);padding:0 3px}
+  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%}
+  .bar i{width:100%;max-width:13px;background:var(--teal);border-radius:3px 3px 0 0;display:block;
+    min-height:3px;transition:height .4s}
+  .bar.hot i{background:var(--accent)}
+  .bar em{font-family:'JetBrains Mono';font-size:8px;color:var(--ink-3);font-style:normal}
+
+  /* Wert-Kacheln */
+  .gauges{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px}
+  .gauge{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;
+    padding:13px 14px;position:relative;overflow:hidden}
+  .gauge::before{content:"";position:absolute;top:0;left:14px;right:14px;height:2px;
+    background:linear-gradient(90deg,var(--teal),transparent);border-radius:2px}
+  .gauge .lab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-2);
+    font-weight:600;margin-bottom:8px}
+  .gauge .val{font-family:'JetBrains Mono';font-weight:700;font-size:26px;color:var(--ink);line-height:1;
+    font-variant-numeric:tabular-nums}
+  .gauge .val .unit{font-size:12px;color:var(--ink-2);font-weight:500;margin-left:3px;font-family:'Inter'}
+  .gauge .tick{font-size:10px;color:var(--ink-3);font-family:'JetBrains Mono';margin-top:8px;letter-spacing:.02em}
+  .gauge.manual .val{cursor:text;border-bottom:1px dashed var(--ink-3);display:inline-block}
+  .gauge .edit{font-size:10px;color:var(--teal);font-weight:600;margin-top:6px;cursor:pointer}
+
+  .caption{font-size:10.5px;color:var(--ink-3);text-align:center;margin-top:18px;line-height:1.6}
+  .caption a{color:var(--ink-2)}
+  .refresh{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:11px;
+    color:var(--ink-2);font-size:12px;font-weight:600;font-family:'Inter';cursor:pointer;margin-top:4px}
+  .skel{color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="topbar">
+    <div class="brand">
+      <div class="name">BORDBUCH</div>
+      <div class="sub"><span class="dot" id="status-dot"></span> <span id="status-txt">verbinde…</span></div>
+    </div>
+    <div class="toggle" onclick="toggleMode()">
+      <span class="t-day">☀ Tag</span><span class="t-night">☾ Nacht</span>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="eyebrow">Vor der Abfahrt · Locarno</div>
+
+    <!-- WIND-AMPEL -->
+    <div class="ampel s-idle" id="ampel">
+      <div class="top">
+        <div class="state"><span id="state-word">Lädt…</span><small id="state-sub">Winddaten werden geholt</small></div>
+        <div class="compass"><div class="needle" id="needle"></div><span id="dir-card">–</span></div>
+      </div>
+      <div class="nums">
+        <div><div class="l">Wind</div><div class="b"><span id="wind-kn" class="skel">–</span><span>kn</span></div></div>
+        <div><div class="l">Böen</div><div class="b"><span id="gust-kn" class="skel">–</span><span>kn</span></div></div>
+        <div><div class="l">Bft</div><div class="b"><span id="bft" class="skel">–</span></div></div>
+      </div>
+      <div class="hint" id="hint">⚓ Auswertung läuft…</div>
+    </div>
+
+    <!-- BÖEN-VERLAUF 12 h -->
+    <div class="panel">
+      <div class="panel-head"><span class="lab">Böen nächste 12 h · kn</span>
+        <span class="now" id="gust-trend">–</span></div>
+      <div class="chart" id="chart"><div class="avgline" id="avgline" style="bottom:50%"><span id="avg-lbl">–</span></div></div>
+    </div>
+
+    <!-- WERTE -->
+    <div class="gauges">
+      <div class="gauge">
+        <div class="lab">Seepegel</div>
+        <div class="val"><span id="level" class="skel">–</span><span class="unit">m ü.M.</span></div>
+        <div class="tick">BAFU · Station 2022</div>
+      </div>
+      <div class="gauge manual">
+        <div class="lab">Wassertemp.</div>
+        <div class="val"><span id="watertemp" contenteditable="true" spellcheck="false">–</span><span class="unit">°C</span></div>
+        <div class="edit">✎ manuell · Saison-Schätzung</div>
+      </div>
+    </div>
+
+    <button class="refresh" onclick="loadAll()">↻ Aktualisieren</button>
+
+    <div class="caption">
+      Wind: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> ·
+      Pegel: BAFU/FOEN via <a href="https://api.existenz.ch" target="_blank">existenz.ch</a><br>
+      Wassertemp.: Simstrat-1D-Modell · <a href="https://www.alplakes.eawag.ch" target="_blank">Alplakes (Eawag)</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- Standort: Locarno / Lago Maggiore ----
+  const LAT = 46.166, LON = 8.795, HYDRO_STATION = "2022";
+  // Böen-Schwellen (Knoten) für Motorboot auf dem See
+  const WARN = 16, BAD = 27;
+  // Optional: /exec-URL deines Wassertemp-Proxys. Leer = Saison-Schätzung.
+  // Eintragen für Live-Wassertemp in der Demo, z.B.:
+  // const WATERTEMP_PROXY = "https://script.google.com/macros/s/<id>/exec";
+  const WATERTEMP_PROXY = "";
+
+  const CARDINALS = ["N","NNO","NO","ONO","O","OSO","SO","SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  const cardinal = d => CARDINALS[Math.round(d/22.5)%16];
+
+  // Beaufort aus Knoten
+  function beaufort(kn){
+    const t=[1,4,7,11,17,22,28,34,41,48,56,64];
+    let b=0; for(const x of t){ if(kn>=x) b++; } return b;
+  }
+  // WMO-Codes: 95-99 = Gewitter
+  const isThunder = c => c>=95 && c<=99;
+
+  // lokaler Wind-Kontext (Maggiore-typisch)
+  function localWind(dir){
+    if(dir>=135 && dir<=225) return "Aus Süd — Inverna-Lage (baut nachmittags auf)";
+    if(dir<=45 || dir>=315) return "Aus Nord — Tramontana/Maggiore möglich (morgens)";
+    return null;
+  }
+
+  function setStatus(state, txt){
+    document.getElementById("status-dot").className = "dot" + (state==="live"?" live":"");
+    document.getElementById("status-txt").textContent = txt;
+  }
+
+  async function loadWind(){
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}`
+      + `&current=temperature_2m,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m`
+      + `&hourly=wind_gusts_10m,weather_code&forecast_hours=12&wind_speed_unit=kn&timezone=auto`;
+    const r = await fetch(url); if(!r.ok) throw new Error("wind");
+    const d = await r.json();
+    const c = d.current;
+    const wind = Math.round(c.wind_speed_10m), gust = Math.round(c.wind_gusts_10m);
+    const dir = c.wind_direction_10m, code = c.weather_code;
+
+    // Ampel-Logik: Böen + Gewitter entscheiden
+    let state="good", word="Gute Bedingungen", sub="Ruhiges Fahrwasser";
+    if(gust>=BAD){ state="bad"; word="Warnung"; sub="Starke Böen — Ausfahrt prüfen"; }
+    else if(gust>=WARN){ state="warn"; word="Vorsicht"; sub="Auffrischender Wind"; }
+    const thunderNext = isThunder(code) || (d.hourly.weather_code||[]).some(isThunder);
+    if(thunderNext){ state="bad"; word="Gewitter"; sub="Gewittergefahr in den nächsten Stunden"; }
+
+    const a = document.getElementById("ampel");
+    a.className = "ampel s-"+state;
+    document.getElementById("state-word").textContent = word;
+    document.getElementById("state-sub").textContent = sub;
+    document.getElementById("wind-kn").textContent = wind;
+    document.getElementById("gust-kn").textContent = gust;
+    document.getElementById("bft").textContent = beaufort(gust);
+    document.getElementById("dir-card").textContent = cardinal(dir);
+    document.getElementById("needle").style.transform = `rotate(${dir}deg)`;
+    ["wind-kn","gust-kn","bft"].forEach(id=>document.getElementById(id).classList.remove("skel"));
+
+    const ctx = localWind(dir);
+    document.getElementById("hint").innerHTML = thunderNext
+      ? "⛈ Gewitterzellen gemeldet — Wetterbericht beachten"
+      : (ctx ? "🧭 "+ctx : "⚓ Wind aus "+cardinal(dir)+" · "+wind+" kn");
+
+    // 12-h Böen-Verlauf
+    const gusts = (d.hourly.wind_gusts_10m||[]).slice(0,12).map(Math.round);
+    const max = Math.max(...gusts, WARN+4);
+    const chart = document.getElementById("chart");
+    chart.querySelectorAll(".bar").forEach(b=>b.remove());
+    const labels = (d.hourly.time||[]).slice(0,12).map(t=>t.slice(11,13));
+    gusts.forEach((g,i)=>{
+      const bar=document.createElement("div");
+      bar.className="bar"+(g>=WARN?" hot":"");
+      bar.innerHTML=`<i style="height:${Math.max(6,g/max*100)}%"></i><em>${i%2?"":labels[i]}</em>`;
+      chart.appendChild(bar);
+    });
+    document.getElementById("avgline").style.bottom = (WARN/max*100)+"%";
+    document.getElementById("avg-lbl").textContent = WARN+" kn";
+    document.getElementById("gust-trend").textContent = "max "+Math.max(...gusts)+" kn";
+  }
+
+  async function loadLevel(){
+    const url = `https://api.existenz.ch/apiv1/hydro/latest?locations=${HYDRO_STATION}`
+      + `&parameters=height,temperature&app=bordbuch&version=1.0`;
+    const r = await fetch(url); if(!r.ok) throw new Error("level");
+    const d = await r.json();
+    const find = par => (d.payload||[]).find(p=>p.loc===HYDRO_STATION && p.par===par);
+    const h = find("height") || find("level");
+    if(h){ document.getElementById("level").textContent = h.val.toFixed(2);
+           document.getElementById("level").classList.remove("skel"); }
+    else { document.getElementById("level").textContent = "n/a"; }
+  }
+
+  // Saison-Schätzwert Wassertemperatur (Monatsmittel Lago Maggiore), sofort sichtbar
+  function seasonWaterTemp(){
+    const m=[6,6,8,11,15,19,23,24,21,16,11,8][new Date().getMonth()];
+    document.getElementById("watertemp").textContent = m;
+  }
+
+  // Live-Wassertemperatur über den Apps-Script-Proxy (Alplakes Simstrat 1D).
+  // Direkt geht nicht: Alplakes sendet keinen CORS-Header.
+  async function loadWaterTemp(){
+    if(!WATERTEMP_PROXY) throw new Error("kein proxy konfiguriert");
+    const r = await fetch(`${WATERTEMP_PROXY}?type=watertemp`);
+    if(!r.ok) throw new Error("watertemp");
+    const d = await r.json();
+    if(!d.ok || typeof d.value!=="number") throw new Error(d.error||"watertemp");
+    const w = document.getElementById("watertemp");
+    w.textContent = d.value.toFixed(1);
+    w.parentElement.parentElement.querySelector(".edit").textContent = "● live · Alplakes (Simstrat)";
+  }
+
+  async function loadAll(){
+    setStatus("","verbinde…");
+    seasonWaterTemp();
+    const results = await Promise.allSettled([loadWind(), loadLevel(), loadWaterTemp()]);
+    const ok = results.every(r=>r.status==="fulfilled");
+    const t = new Date().toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"});
+    if(ok) setStatus("live","Live · Stand "+t);
+    else if(results.some(r=>r.status==="fulfilled")) setStatus("live","Teilweise live · "+t);
+    else setStatus("","Quelle nicht erreichbar");
+  }
+
+  function toggleMode(){
+    const h=document.documentElement;
+    h.dataset.mode = h.dataset.mode==='night' ? 'day' : 'night';
+  }
+  document.documentElement.dataset.mode='day';
+  loadAll();
+</script>
+</body>
+</html>
