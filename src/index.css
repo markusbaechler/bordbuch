@@ -76,7 +76,10 @@ body {
 
 body {
   background: radial-gradient(120% 90% at 50% -10%, var(--bg), var(--amb) 70%) fixed;
-  min-height: 100vh;
+  min-height: 100dvh;
+  /* App-Shell: nur der Inhalt scrollt, nicht die ganze Seite – so bleibt die
+     Bottom-Nav immer sichtbar (auch auf Mobile mit ein-/ausfahrender URL-Leiste). */
+  overflow: hidden;
   font-family: var(--font-sans);
   color: var(--ink);
   transition: background 0.35s ease;

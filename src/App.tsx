@@ -127,10 +127,10 @@ function Shell() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh min-h-screen w-full max-w-[480px] flex-col bg-surface shadow-[var(--shadow)]">
+    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-surface shadow-[var(--shadow)]">
       <Topbar mode={mode} onToggleMode={toggleMode} />
 
-      <main className="flex-1 overflow-y-auto px-4 pb-6 pt-[18px]">
+      <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-[18px]">
         {!isConfigured && <ConfigWarning />}
 
         {loading && <Spinner label="Lade Einträge…" />}

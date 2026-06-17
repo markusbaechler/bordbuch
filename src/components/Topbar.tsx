@@ -10,7 +10,7 @@ export function Topbar({
   onToggleMode: () => void
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-line bg-surface px-[18px] pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-[18px] pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="flex-1 leading-none">
         <div className="font-display text-[21px] font-bold tracking-[0.14em] text-ink">
           BORDBUCH

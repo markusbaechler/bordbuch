@@ -30,7 +30,7 @@ export function BottomNav({
   onNavigate: (s: Screen) => void
 }) {
   return (
-    <nav className="flex border-t border-line bg-surface px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+    <nav className="flex shrink-0 border-t border-line bg-surface px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
       <NavButton
         label="Wetter"
         active={active === 'conditions'}
