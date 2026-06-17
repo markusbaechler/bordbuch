@@ -1,8 +1,9 @@
-# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v3 (Live-Conditions „Vor der Abfahrt", History-Modals, PWA)
+# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v4 (Seekarte + GPS-Tacho)
 
 WICHTIG: Logbuch/CRUD/Dashboard (§1–§11) sind umgesetzt. v3 ergänzt das Feature
 **„Vor der Abfahrt"** (Live-Wetter/Pegel/Wassertemperatur, §14), die **History-Modals**
-(§14) und die **PWA**-Fähigkeit (§15). Backend (Code.gs v2, CRUD) unverändert.
+(§14) und die **PWA**-Fähigkeit (§15). v4 ergänzt die **interaktive Seekarte + GPS-Tacho**
+(§16). Backend (Code.gs v2, CRUD) unverändert.
 
 ## 1. Ziel
 Mobile-first Logbuch für ein Motorboot in **Ascona, Lago Maggiore**. Nutzung am
@@ -175,3 +176,43 @@ Installierbar (Manifest + Service Worker), ohne neue npm-Abhängigkeit.
   `apple-touch-icon.png`, `favicon-32.png`.
 - Layout ist eine fixe App-Shell (`h-dvh`, `body { overflow:hidden }`); nur `main` scrollt,
   Topbar/Bottom-Nav bleiben immer sichtbar.
+
+## 16. Seekarte + GPS-Tacho (v4)
+Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
+`src/screens/MapScreen.tsx`. **Bewusste Ausnahme von „keine neuen Deps": Leaflet**
+(`leaflet` + `@types/leaflet`, via npm). Leaflet-CSS wird in `MapScreen.tsx` importiert.
+
+- **Kacheln:** OpenStreetMap (Basis) + OpenSeaMap-Seamark-Overlay (Seezeichen/Tonnen/
+  Untiefen, halbtransparent). Attribution „© OpenStreetMap / © OpenSeaMap" via Leaflet-
+  Attribution-Control (Pflicht).
+- **POIs:** live aus OpenStreetMap über die **Overpass-API** (keylos, CORS) – keine eigene
+  Liste. Client `src/lib/mapData.ts`: eine kombinierte Overpass-Abfrage über eine feste
+  Bounding-Box (Nord-Lago-Maggiore), Ergebnis in Modul-Speicher **+ sessionStorage gecacht**
+  (TTL 12 h, paralleler Fetch wird geteilt; `CACHE_KEY` bei Abfrage-Änderung hochzählen).
+  Kategorien (`CategoryKey`): `harbor` (Häfen/Marinas/Anlegestellen), `anchor`
+  (Ankerplätze/Bojen, via `seamark:type`), `fuel` (Bootstankstellen), `food`
+  (Gastro & Strandbäder), `shop` (Einkauf), `sights` (Ausflugsziele). Jede Kategorie hat
+  Emoji + feste Farbe; Marker = `L.divIcon`. Filter-Chips oben (an/aus pro Kategorie).
+- **Fokus „mit dem Boot erreichbar" (Anti-Clutter):** Ein echtes „nur per Boot"-Tag gibt
+  es in OSM nicht → **Uferband als Proxy**. Die Abfrage bestimmt zuerst das Seepolygon
+  (`natural=water`, Name ~ „Maggiore|Verbano") als Set `.lake`; **nautische** POIs
+  (marina, ferry_terminal, seamark harbour/anchorage/mooring, waterway=fuel) werden im
+  ganzen Seegebiet gesucht, die **weichen** Kategorien (Gastro/Einkauf/Ausflugsziele) nur
+  `around.lake` in einem schmalen Band (`SHORE_NEAR`=80 m für Gastro/Einkauf, `SHORE_WIDE`
+  =250 m für Bäder/Sehenswürdigkeiten). Bewusst weggelassen, weil zu viel Clutter:
+  `man_made=pier` (Privatstege), `tourism=artwork` (Statuen), Slipanlagen/Service-POIs.
+- **Links im Popup:** `website`/`contact:website`/`url` → klickbarer „🌐 Website"-Link
+  (auf `http(s)://` normalisiert, `target=_blank rel=noopener noreferrer`); `phone`/
+  `contact:phone` → „☎ …" als `tel:`-Link. Seezeichen kommen NICHT über POIs, sondern
+  über das OpenSeaMap-Overlay.
+- **GPS:** Hook `src/hooks/useGeoPosition.ts` (`watchPosition`, `enableHighAccuracy`).
+  Eigene Position als pulsierender Marker + Genauigkeitskreis. **Tacho** (Overlay) zeigt
+  km/h (m/s ×3.6) und Knoten (m/s ×1.94384), `font-mono`+`tabnum`. Fehlt `coords.speed`
+  (Desktop), wird die Geschwindigkeit aus zwei Fixes geschätzt (Haversine ÷ dt). „Mich
+  zentrieren"-Button schaltet Folgen ein; eine Kartengeste beendet es wieder.
+- **Layout:** Die Karte braucht feste Höhe → eigenes, padding-/scrollfreies `<main>` in
+  `App.tsx` (`screen === 'map'` rendert full-bleed, unabhängig vom Einträge-Ladezustand).
+  `ResizeObserver` ruft `map.invalidateSize()` (mobile URL-Leiste). Popups + Attribution
+  sind über CSS-Variablen an Tag/Nacht gekoppelt (`src/index.css`).
+- **SW/Caching:** Kartenkacheln sind Fremd-Origin → der Service-Worker fängt sie nicht ab
+  (direkt ans Netz), wie bei den übrigen Live-Daten.

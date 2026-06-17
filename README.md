@@ -140,7 +140,33 @@ node scripts/gen-icons.mjs   # schreibt nach public/
 
 ---
 
-## 6. Datenmodell & Logik (Kurzfassung)
+## 6. Seekarte & GPS-Tacho
+
+Der Tab **„Karte"** zeigt eine interaktive Seekarte für den nördlichen Lago Maggiore
+(Locarno/Ascona) auf Basis von [Leaflet](https://leafletjs.com/):
+
+- **Kacheln:** OpenStreetMap als Basis, darüber das halbtransparente
+  OpenSeaMap-Seezeichen-Overlay (Tonnen, Untiefen, Fährlinien).
+- **POIs** kommen **live aus OpenStreetMap** über die keylose
+  [Overpass-API](https://wiki.openstreetmap.org/wiki/Overpass_API) – also keine gepflegte
+  eigene Liste, sondern selbst-aktualisierend. Sie sind nach Kategorie filterbar (Häfen &
+  Stege, Ankerplätze, Tankstellen, Gastro & Bäder, Einkauf, Ausflugsziele). Das Ergebnis
+  wird pro Sitzung gecacht (12 h), um Overpass zu schonen.
+- **Fokus auf boots-relevante Ziele:** Häfen, Stege, Ankerplätze, Bojen und Bootstankstellen
+  werden im ganzen Seegebiet gesucht; Gastronomie, Einkauf und Ausflugsziele dagegen nur in
+  einem schmalen **Uferband** rund um den See – so erscheinen nur Ziele am bzw. nahe am
+  Wasser und nicht die ganze Orts-Clutter im Landesinneren. (Ein echtes „nur per Boot
+  erreichbar"-Merkmal gibt es in den OSM-Daten nicht; das Uferband ist der beste Näherungswert.)
+- **Links:** Wo OSM eine Website oder Telefonnummer kennt, zeigt das Marker-Popup einen
+  klickbaren Link (🌐 Website / ☎ Telefon).
+- **GPS-Tacho:** Bei freigegebenem Standort zeigt ein Overlay die aktuelle Geschwindigkeit
+  in **km/h und Knoten**; die eigene Position erscheint als Marker. Ein Button zentriert
+  die Karte auf die eigene Position.
+
+Quellen-Attribution (© OpenStreetMap / © OpenSeaMap) wird in der Karte angezeigt. Es sind
+keine Keys oder zusätzliche Secrets nötig; die Standortfreigabe erfolgt im Browser.
+
+## 7. Datenmodell & Logik (Kurzfassung)
 
 Ein Eintrag (`Entry`) entspricht einer Zeile im Tabellenblatt `Logbuch`. `engineHours`
 ist **ein** Zählerstand (Betriebsstundenzähler bei Start), `harborTo` ist Freitext.

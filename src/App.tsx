@@ -4,6 +4,7 @@ import { Topbar } from './components/Topbar'
 import { BottomNav, type Screen } from './components/BottomNav'
 import { Spinner } from './components/Spinner'
 import { ConditionsScreen } from './screens/ConditionsScreen'
+import { MapScreen } from './screens/MapScreen'
 import { ListScreen } from './screens/ListScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { DetailScreen } from './screens/DetailScreen'
@@ -124,6 +125,20 @@ function Shell() {
   function handleNavigate(s: Screen) {
     if (s === 'new') openNew()
     else setScreen(s)
+  }
+
+  // Die Karte ist full-bleed (eigene feste Höhe) und unabhängig vom Einträge-
+  // Ladezustand – darum bekommt sie ein eigenes, padding-/scrollfreies <main>.
+  if (screen === 'map') {
+    return (
+      <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-surface shadow-[var(--shadow)]">
+        <Topbar mode={mode} onToggleMode={toggleMode} />
+        <main className="relative flex-1 overflow-hidden">
+          <MapScreen />
+        </main>
+        <BottomNav active={screen} onNavigate={handleNavigate} />
+      </div>
+    )
   }
 
   return (

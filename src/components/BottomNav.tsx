@@ -1,7 +1,7 @@
 import type { SVGProps } from 'react'
 import { IconDashboard, IconList, IconPlus } from './icons'
 
-export type Screen = 'conditions' | 'dash' | 'list' | 'detail' | 'new'
+export type Screen = 'conditions' | 'map' | 'dash' | 'list' | 'detail' | 'new'
 
 /** Kompass-Icon für den „Wetter"-Tab (inline, ohne Eingriff in icons.tsx). */
 function IconCompass(p: SVGProps<SVGSVGElement>) {
@@ -21,6 +21,24 @@ function IconCompass(p: SVGProps<SVGSVGElement>) {
   )
 }
 
+/** Karten-Pin-Icon für den „Karte"-Tab (inline). */
+function IconMap(p: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      {...p}
+    >
+      <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  )
+}
+
 /** Untere Navigation mit zentralem FAB für „Neu". */
 export function BottomNav({
   active,
@@ -36,6 +54,12 @@ export function BottomNav({
         active={active === 'conditions'}
         onClick={() => onNavigate('conditions')}
         icon={<IconCompass />}
+      />
+      <NavButton
+        label="Karte"
+        active={active === 'map'}
+        onClick={() => onNavigate('map')}
+        icon={<IconMap />}
       />
       <NavButton
         label="Dashboard"
