@@ -1,40 +1,27 @@
 // src/lib/mapData.ts
-// POI-Client für die Seekarte. Quelle ist OpenStreetMap live über die Overpass-API
-// (keylos, CORS) – keine eigene Liste, sondern selbst-aktualisierend. Die Region
-// (Nord-Lago-Maggiore, Locarno/Ascona) ist fix; das Ergebnis wird gecacht
-// (Modul-Speicher + sessionStorage mit TTL), damit Overpass nicht bei jedem
-// Tab-Wechsel erneut belastet wird.
+// Kuratierte POI-Liste für die Seekarte (nördliches Lago-Maggiore-Becken, der
+// realistische Tagesfahrt-Radius ab Ascona: Locarno/Gambarogno bis Brissago,
+// Cannobio, Cannero, Oggebbio).
 //
-// Fokus „mit dem Boot erreichbar": Rein nautische POIs (Häfen, Stege, Ankerplätze,
-// Bojen, Bootstankstellen) werden im ganzen Seegebiet gesucht. Die „weichen"
-// Kategorien (Gastro, Einkauf, Ausflugsziele) NUR in einem schmalen Uferband um
-// den See (Overpass `around` auf das Seepolygon) – so fällt die ganze Orts-Clutter
-// im Landesinneren weg. (Ein echtes „ausschliesslich per Boot"-Tag gibt es in OSM
-// nicht; das Uferband ist der bestmögliche Proxy.)
-//
-// Attribution: © OpenStreetMap-Mitwirkende (in der Karte als Leaflet-Attribution).
+// Bewusste Abkehr von der Live-Overpass-Abfrage: die lieferte zu viel Clutter
+// (hunderte Restaurants, jeder Adler der Falconeria als „attraction" …) und
+// damit keinen Mehrwert gegenüber Google Maps. Diese Liste ist klein, verlässlich
+// und boots-relevant. Koordinaten stammen aus OpenStreetMap (Stand Kuratierung),
+// Pflege bei Bedarf von Hand. Attribution Kartenkacheln weiterhin © OSM/OpenSeaMap.
 
-// Bounding-Box Nord-Lago-Maggiore: Locarno/Ascona/Brissago bis Cannobio/Luino.
-// Reihenfolge: süd, west, nord, ost.
-const BBOX = { s: 45.9, w: 8.62, n: 46.2, e: 8.92 } as const
-
-// Uferband-Breiten (m) für die „weichen" Kategorien. Eng = nur die erste Reihe
-// am Wasser (boots-/anlegerelevant), nicht die zweite Häuserzeile.
-const SHORE_NEAR = 80 // Gastro, Einkauf (direkt am Wasser)
-const SHORE_WIDE = 250 // Strandbäder, Ausflugsziele (Parks, Inseln, Burgen)
-
-export type CategoryKey = 'harbor' | 'fuel' | 'food' | 'anchor' | 'shop' | 'sights'
+export type CategoryKey = 'harbor' | 'anchor' | 'fuel' | 'food' | 'shop' | 'sights'
 
 export interface Category {
   key: CategoryKey
   label: string
   emoji: string
-  color: string // fixe Hex/Token-Farbe (Marker liegen auf Kacheln, nicht auf Surface)
+  color: string // fixe Hex-Farbe (Marker liegen auf Kacheln, nicht auf Surface)
 }
 
-// Reihenfolge = Reihenfolge der Filter-Chips. Farben bewusst kräftig & unterscheidbar.
+// Reihenfolge = Reihenfolge der Filter-Chips. Nur Kategorien mit ≥1 POI werden
+// als Chip angezeigt (siehe MapScreen) – leere Kategorien stören nicht.
 export const CATEGORIES: Category[] = [
-  { key: 'harbor', label: 'Häfen & Stege', emoji: '⛵', color: '#1C5C8C' },
+  { key: 'harbor', label: 'Häfen', emoji: '⛵', color: '#1C5C8C' },
   { key: 'anchor', label: 'Ankerplätze', emoji: '⚓', color: '#0C7C82' },
   { key: 'fuel', label: 'Tankstellen', emoji: '⛽', color: '#D8930C' },
   { key: 'food', label: 'Gastro & Bäder', emoji: '🍽️', color: '#C44536' },
@@ -52,216 +39,82 @@ export interface Poi {
   lon: number
   name: string
   category: CategoryKey
-  detail: string | null // z. B. Adresse oder Unterkategorie für das Popup
-  website: string | null // klickbarer Link (normalisiert auf http(s)://…)
+  detail: string | null // kurzer Zusatz fürs Popup
+  website: string | null // klickbarer Link (http(s)://…)
   phone: string | null // klickbar als tel:
 }
 
-// ---------------------------------------------------------------------------
-// Overpass-Abfrage
-// ---------------------------------------------------------------------------
+// Kompakte Definition; `mk` füllt id/Defaults auf.
+type PoiDef = [name: string, lat: number, lon: number, detail?: string, website?: string]
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
-
-// Eine kombinierte Abfrage. Zuerst das Seepolygon (.lake) bestimmen, dann:
-//  - nautische POIs ohne Uferfilter (liegen ohnehin am/im Wasser, sind selten)
-//  - „weiche" POIs nur `around` dem Seeufer (boots-/anlegerelevant)
-// `nwr` = Nodes/Ways/Relations; `out center tags` liefert für Flächen den
-// Mittelpunkt + Tags.
-const OVERPASS_QUERY = `
-[out:json][timeout:60][bbox:${BBOX.s},${BBOX.w},${BBOX.n},${BBOX.e}];
-nwr["natural"="water"]["name"~"Maggiore|Verbano"]->.lake;
-(
-  nwr["leisure"="marina"];
-  nwr["amenity"="ferry_terminal"];
-  nwr["seamark:type"~"harbour|harbour_basin|berth"];
-  nwr["waterway"="fuel"];
-  nwr["seamark:type"~"anchorage|mooring"];
-  nwr["amenity"~"restaurant|cafe|bar|biergarten|ice_cream"](around.lake:${SHORE_NEAR});
-  nwr["shop"~"supermarket|convenience|bakery|kiosk|deli|greengrocer"](around.lake:${SHORE_NEAR});
-  nwr["leisure"~"beach_resort|swimming_area"](around.lake:${SHORE_WIDE});
-  nwr["natural"="beach"](around.lake:${SHORE_WIDE});
-  nwr["tourism"~"attraction|viewpoint|museum|garden|zoo"](around.lake:${SHORE_WIDE});
-  nwr["historic"~"castle|fort|monument|ruins"](around.lake:${SHORE_WIDE});
-);
-out center tags;
-`.trim()
-
-interface OverpassElement {
-  type: 'node' | 'way' | 'relation'
-  id: number
-  lat?: number
-  lon?: number
-  center?: { lat: number; lon: number }
-  tags?: Record<string, string>
+function mk(category: CategoryKey, defs: PoiDef[]): Poi[] {
+  return defs.map(([name, lat, lon, detail, website], i) => ({
+    id: `${category}-${i}`,
+    name,
+    lat,
+    lon,
+    category,
+    detail: detail ?? null,
+    website: website ?? null,
+    phone: null,
+  }))
 }
 
-// Ordnet ein OSM-Element genau einer Kategorie zu (Priorität von oben nach unten).
-function classify(tags: Record<string, string>): CategoryKey | null {
-  const sea = tags['seamark:type'] ?? ''
+// Häfen / Marinas / Anlegestellen (boots-relevant, von Ascona aus erreichbar).
+const HARBORS = mk('harbor', [
+  ['Porto Patriziale Ascona', 46.14667, 8.79324, 'Heimathafen', 'https://www.portoascona.ch/'],
+  ['Porto Regionale di Locarno', 46.16625, 8.80447, 'Locarno', 'http://www.portolocarno.com'],
+  ['Porto Muralto', 46.1712, 8.80301, 'Muralto / Locarno'],
+  ['Porto Minusio', 46.17802, 8.84036, 'Minusio'],
+  ['Porto Campofelice', 46.16636, 8.85518, 'Tenero'],
+  ['Centro Nautico Di Domenico', 46.15595, 8.80382, 'Bootscenter', 'https://www.didomenico.ch/'],
+  ['Marina Magadino', 46.14914, 8.85873, 'Gambarogno'],
+  ['Porto Gambarogno', 46.12867, 8.7964, 'Gambarogno'],
+  ['Porto Ticino Brissago', 46.12284, 8.71477, 'Brissago', 'https://www.yachtsport-resort.com/'],
+  ['Porto alla Resiga', 46.12243, 8.71391, 'Brissago'],
+  ['Porto Vecchio Brissago', 46.11807, 8.71046, 'Brissago'],
+  ['Porto Turistico di Cannobio', 46.06261, 8.70041, 'Cannobio (IT)'],
+  ['Porto comunale Cannero Riviera', 46.0227, 8.68629, 'Cannero (IT)'],
+  ['Porto Portobello', 46.01912, 8.68329, 'Cannero (IT)', 'https://www.nauticabego.com/'],
+  ['Oggebbio Marina', 45.99094, 8.64856, 'Oggebbio (IT)'],
+])
 
-  if (tags.waterway === 'fuel') return 'fuel'
-  if (sea === 'anchorage' || sea === 'mooring') return 'anchor'
-  if (
-    tags.leisure === 'marina' ||
-    tags.amenity === 'ferry_terminal' ||
-    sea === 'harbour' ||
-    sea === 'harbour_basin' ||
-    sea === 'berth'
-  )
-    return 'harbor'
-  if (
-    ['restaurant', 'cafe', 'bar', 'biergarten', 'ice_cream'].includes(tags.amenity) ||
-    tags.leisure === 'beach_resort' ||
-    tags.leisure === 'swimming_area' ||
-    tags.natural === 'beach'
-  )
-    return 'food'
-  if (['supermarket', 'convenience', 'bakery', 'kiosk', 'deli', 'greengrocer'].includes(tags.shop))
-    return 'shop'
-  if (
-    ['attraction', 'viewpoint', 'museum', 'garden', 'zoo'].includes(tags.tourism) ||
-    tags.historic
-  )
-    return 'sights'
-  return null
-}
+// Ausflugsziele, die man per Boot ansteuert.
+const SIGHTS = mk('sights', [
+  ['Isole di Brissago', 46.1326, 8.7345, 'Parco Botanico (Inseln)', 'https://www.isoledibrissago.ti.ch/'],
+  ['Castelli di Cannero', 46.02365, 8.70531, 'Rocca Vitaliana (Inselburgen)', 'https://terreborromeo.it/castelli-di-cannero'],
+  ['Falconeria Locarno', 46.16192, 8.79216, 'Greifvogelschau am Ufer', 'https://www.falconeria.ch/'],
+  ['Castello Visconteo', 46.16789, 8.79326, 'Locarno'],
+  ['Orrido di Sant’Anna', 46.0612, 8.66847, 'Schlucht bei Cannobio'],
+])
 
-// Lesbarer Name mit Fallback auf die Unterkategorie (z. B. „Restaurant").
-function nameOf(tags: Record<string, string>, category: CategoryKey): string {
-  if (tags.name) return tags.name
-  const fallback: Record<CategoryKey, string> = {
-    harbor: 'Hafen / Steg',
-    fuel: 'Bootstankstelle',
-    food: 'Gastronomie / Strandbad',
-    anchor: 'Ankerplatz',
-    shop: 'Einkauf',
-    sights: 'Sehenswürdigkeit',
-  }
-  return fallback[category]
-}
+// Strandbäder / Beach-Clubs am Wasser (per Boot anfahrbar).
+const FOOD = mk('food', [
+  ['Lido Locarno', 46.16317, 8.80094, 'Strandbad'],
+  ['Shaka Beach', 46.14289, 8.83831, 'Beach-Bar Tenero'],
+])
 
-// Kurzdetail fürs Popup: Adresse, sonst der konkrete OSM-Typ.
-function detailOf(tags: Record<string, string>): string | null {
-  const street = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ')
-  const place = [tags['addr:postcode'], tags['addr:city']].filter(Boolean).join(' ')
-  const addr = [street, place].filter(Boolean).join(', ')
-  if (addr) return addr
-  return tags.amenity ?? tags.shop ?? tags.tourism ?? tags.leisure ?? tags.historic ?? null
-}
+// Kuratierte Gesamtliste. Ankerplätze/Tankstellen bewusst (noch) leer – siehe README:
+// für das Nordbecken gibt es in OSM keine verlässlich verorteten Boots-Tankstellen
+// oder offiziellen Ankerfelder; das kommt mit recherchierten Daten nach.
+export const CURATED_POIS: Poi[] = [...HARBORS, ...SIGHTS, ...FOOD]
 
-// Website-Link aus den üblichen Tags, normalisiert auf http(s)://…
-function websiteOf(tags: Record<string, string>): string | null {
-  const raw = tags.website ?? tags['contact:website'] ?? tags.url ?? tags['contact:url'] ?? null
-  if (!raw) return null
-  const url = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw.replace(/^\/+/, '')
-  // Nur plausible URLs durchlassen.
-  return /\./.test(url) ? url : null
-}
+// Kategorien, die tatsächlich POIs enthalten (für die Filter-Chips).
+export const ACTIVE_CATEGORIES: Category[] = CATEGORIES.filter((c) =>
+  CURATED_POIS.some((p) => p.category === c.key),
+)
 
-function phoneOf(tags: Record<string, string>): string | null {
-  return tags.phone ?? tags['contact:phone'] ?? tags['contact:mobile'] ?? null
-}
-
-function parse(elements: OverpassElement[]): Poi[] {
-  const seen = new Set<string>()
-  const pois: Poi[] = []
-  for (const el of elements) {
-    const tags = el.tags
-    if (!tags) continue
-    const lat = el.lat ?? el.center?.lat
-    const lon = el.lon ?? el.center?.lon
-    if (lat == null || lon == null) continue
-    const category = classify(tags)
-    if (!category) continue
-    const id = `${el.type[0]}${el.id}`
-    if (seen.has(id)) continue
-    seen.add(id)
-    pois.push({
-      id,
-      lat,
-      lon,
-      name: nameOf(tags, category),
-      category,
-      detail: detailOf(tags),
-      website: websiteOf(tags),
-      phone: phoneOf(tags),
-    })
-  }
-  return pois
-}
-
-// ---------------------------------------------------------------------------
-// Caching (Modul-Speicher + sessionStorage), TTL 12 h
-// ---------------------------------------------------------------------------
-
-// Schema-/Abfrage-Version im Key: bei Änderungen alten Cache automatisch verwerfen.
-const CACHE_KEY = 'bordbuch.pois.v3'
-const TTL_MS = 12 * 60 * 60 * 1000
-
-interface CacheEntry {
-  ts: number
-  pois: Poi[]
-}
-
-let memoryCache: CacheEntry | null = null
-let inflight: Promise<Poi[]> | null = null
-
-function readSession(): CacheEntry | null {
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as CacheEntry
-  } catch {
-    return null
-  }
-}
-
-function writeSession(entry: CacheEntry): void {
-  try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(entry))
-  } catch {
-    /* Speicher voll / privat – Cache ist optional. */
-  }
-}
-
-const fresh = (entry: CacheEntry | null, now: number): entry is CacheEntry =>
-  !!entry && now - entry.ts < TTL_MS
+import { haversineM } from './geo'
 
 /**
- * POIs für die Region laden. Liefert gecachte Daten sofort, solange sie frisch
- * sind; parallele Aufrufe (z. B. StrictMode-Doppelmount) teilen sich einen Fetch.
- * `now` ist injizierbar für Tests; Default = aktuelle Zeit.
+ * Nächstgelegener Hafen-Name zu einer Position (für „Fahrt ins Logbuch").
+ * Gibt null zurück, wenn nichts innerhalb `maxM` liegt.
  */
-export async function fetchPois(now: number = Date.now()): Promise<Poi[]> {
-  if (fresh(memoryCache, now)) return memoryCache.pois
-
-  const session = readSession()
-  if (fresh(session, now)) {
-    memoryCache = session
-    return session.pois
+export function nearestHarborName(lat: number, lon: number, maxM = 1500): string | null {
+  let best: { name: string; d: number } | null = null
+  for (const p of HARBORS) {
+    const d = haversineM(lat, lon, p.lat, p.lon)
+    if (!best || d < best.d) best = { name: p.name, d }
   }
-
-  if (inflight) return inflight
-
-  inflight = (async () => {
-    const res = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(OVERPASS_QUERY),
-    })
-    if (!res.ok) throw new Error(`Overpass ${res.status}`)
-    const json = (await res.json()) as { elements?: OverpassElement[] }
-    const pois = parse(json.elements ?? [])
-    const entry: CacheEntry = { ts: now, pois }
-    memoryCache = entry
-    writeSession(entry)
-    return pois
-  })()
-
-  try {
-    return await inflight
-  } finally {
-    inflight = null
-  }
+  return best && best.d <= maxM ? best.name : null
 }

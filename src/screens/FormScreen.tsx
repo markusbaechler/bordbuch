@@ -25,8 +25,19 @@ interface FormState {
   notes: string
 }
 
-function emptyState(prefillHours: number | null): FormState {
-  return {
+/**
+ * Vorbefüllung für einen NEUEN Eintrag (z. B. aus einer aufgezeichneten Fahrt
+ * auf der Karte). Nur gesetzte Felder überschreiben die Defaults.
+ */
+export interface EntryDraft {
+  date?: string
+  harborFrom?: string
+  harborTo?: string
+  notes?: string
+}
+
+function emptyState(prefillHours: number | null, draft?: EntryDraft): FormState {
+  const base: FormState = {
     date: todayLocal(),
     harborFrom: DEFAULT_HARBOR_FROM,
     harborTo: '',
@@ -35,6 +46,14 @@ function emptyState(prefillHours: number | null): FormState {
     fuelCostChf: '',
     paidBy: '',
     notes: '',
+  }
+  if (!draft) return base
+  return {
+    ...base,
+    ...(draft.date ? { date: draft.date } : {}),
+    ...(draft.harborFrom ? { harborFrom: draft.harborFrom } : {}),
+    ...(draft.harborTo ? { harborTo: draft.harborTo } : {}),
+    ...(draft.notes ? { notes: draft.notes } : {}),
   }
 }
 
@@ -53,6 +72,7 @@ function fromEntry(e: Entry): FormState {
 
 export function FormScreen({
   editing,
+  draft,
   lastEngineHours,
   knownHarbors,
   knownPaidBy,
@@ -62,6 +82,8 @@ export function FormScreen({
 }: {
   /** vorhandener Eintrag = Bearbeiten, null = Neu */
   editing: Entry | null
+  /** Vorbefüllung für einen neuen Eintrag (z. B. aus einer Kartenfahrt) */
+  draft?: EntryDraft
   /** höchster Zählerstand bisher (ohne den bearbeiteten Eintrag): Vorbefüllung + Vorschau */
   lastEngineHours: number | null
   knownHarbors: string[]
@@ -72,7 +94,7 @@ export function FormScreen({
 }) {
   const toast = useToast()
   const [s, setS] = useState<FormState>(() =>
-    editing ? fromEntry(editing) : emptyState(lastEngineHours),
+    editing ? fromEntry(editing) : emptyState(lastEngineHours, draft),
   )
   const [showPrefillHint] = useState(() => !editing && lastEngineHours !== null)
 

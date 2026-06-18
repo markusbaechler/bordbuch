@@ -147,21 +147,25 @@ Der Tab **„Karte"** zeigt eine interaktive Seekarte für den nördlichen Lago 
 
 - **Kacheln:** OpenStreetMap als Basis, darüber das halbtransparente
   OpenSeaMap-Seezeichen-Overlay (Tonnen, Untiefen, Fährlinien).
-- **POIs** kommen **live aus OpenStreetMap** über die keylose
-  [Overpass-API](https://wiki.openstreetmap.org/wiki/Overpass_API) – also keine gepflegte
-  eigene Liste, sondern selbst-aktualisierend. Sie sind nach Kategorie filterbar (Häfen &
-  Stege, Ankerplätze, Tankstellen, Gastro & Bäder, Einkauf, Ausflugsziele). Das Ergebnis
-  wird pro Sitzung gecacht (12 h), um Overpass zu schonen.
-- **Fokus auf boots-relevante Ziele:** Häfen, Stege, Ankerplätze, Bojen und Bootstankstellen
-  werden im ganzen Seegebiet gesucht; Gastronomie, Einkauf und Ausflugsziele dagegen nur in
-  einem schmalen **Uferband** rund um den See – so erscheinen nur Ziele am bzw. nahe am
-  Wasser und nicht die ganze Orts-Clutter im Landesinneren. (Ein echtes „nur per Boot
-  erreichbar"-Merkmal gibt es in den OSM-Daten nicht; das Uferband ist der beste Näherungswert.)
-- **Links:** Wo OSM eine Website oder Telefonnummer kennt, zeigt das Marker-Popup einen
-  klickbaren Link (🌐 Website / ☎ Telefon).
+- **POIs:** eine **kuratierte, feste Liste** boots-relevanter Ziele im nördlichen Becken
+  (Häfen/Anlegestellen, Ausflugsziele wie die Isole di Brissago oder die Castelli di Cannero,
+  Strandbäder), filterbar nach Kategorie. Bewusst keine Live-OSM-Abfrage mehr: die lieferte
+  vor allem Clutter (hunderte Restaurants, jede Statue) und damit keinen Mehrwert gegenüber
+  Google Maps. Wo bekannt, zeigt das Popup einen klickbaren **Website-/Telefon-Link**.
 - **GPS-Tacho:** Bei freigegebenem Standort zeigt ein Overlay die aktuelle Geschwindigkeit
-  in **km/h und Knoten**; die eigene Position erscheint als Marker. Ein Button zentriert
-  die Karte auf die eigene Position.
+  in **km/h und Knoten**; die eigene Position erscheint als Marker.
+- **Fahrtaufzeichnung → Logbuch:** „Fahrt aufzeichnen" zeichnet den GPS-Track auf und zeigt
+  live **Strecke (km/sm), Dauer und Ø-/Max-Tempo**. Mit „Ins Logbuch" wird daraus ein neuer
+  Logbuch-Eintrag **vorbefüllt** (Start-/Zielhafen automatisch erkannt, Eckdaten in den
+  Notizen) – Betriebsstunden trägst du noch selbst ein. Die Aufzeichnung ist bewusst opt-in
+  und pausiert bei ausgeschaltetem Bildschirm, um Akku zu sparen.
+- **Mess-/Planungstool:** „Messen" antippen, dann zwei Punkte auf der Karte – die App zeigt
+  **Distanz (km/sm), Kurs und ETA** beim aktuellen bzw. einem Planungstempo.
+- **Wind-Lage:** Ein Badge oben rechts zeigt die aktuelle Windrichtung (Pfeil), Stärke und
+  Böen für Locarno (Open-Meteo).
+- **See-Regeln & Zonen:** Das Naturschutzgebiet **Bolle di Magadino** ist als No-Go-Fläche
+  eingezeichnet; „See-Regeln" blendet die wichtigsten Verhaltensregeln ein. Diese Angaben
+  sind **Annäherungen ohne Gewähr** – massgeblich bleiben die offiziellen Schifffahrtskarten.
 
 Quellen-Attribution (© OpenStreetMap / © OpenSeaMap) wird in der Karte angezeigt. Es sind
 keine Keys oder zusätzliche Secrets nötig; die Standortfreigabe erfolgt im Browser.

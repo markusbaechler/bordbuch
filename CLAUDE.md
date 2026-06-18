@@ -185,31 +185,40 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
 - **Kacheln:** OpenStreetMap (Basis) + OpenSeaMap-Seamark-Overlay (Seezeichen/Tonnen/
   Untiefen, halbtransparent). Attribution „© OpenStreetMap / © OpenSeaMap" via Leaflet-
   Attribution-Control (Pflicht).
-- **POIs:** live aus OpenStreetMap über die **Overpass-API** (keylos, CORS) – keine eigene
-  Liste. Client `src/lib/mapData.ts`: eine kombinierte Overpass-Abfrage über eine feste
-  Bounding-Box (Nord-Lago-Maggiore), Ergebnis in Modul-Speicher **+ sessionStorage gecacht**
-  (TTL 12 h, paralleler Fetch wird geteilt; `CACHE_KEY` bei Abfrage-Änderung hochzählen).
-  Kategorien (`CategoryKey`): `harbor` (Häfen/Marinas/Anlegestellen), `anchor`
-  (Ankerplätze/Bojen, via `seamark:type`), `fuel` (Bootstankstellen), `food`
-  (Gastro & Strandbäder), `shop` (Einkauf), `sights` (Ausflugsziele). Jede Kategorie hat
-  Emoji + feste Farbe; Marker = `L.divIcon`. Filter-Chips oben (an/aus pro Kategorie).
-- **Fokus „mit dem Boot erreichbar" (Anti-Clutter):** Ein echtes „nur per Boot"-Tag gibt
-  es in OSM nicht → **Uferband als Proxy**. Die Abfrage bestimmt zuerst das Seepolygon
-  (`natural=water`, Name ~ „Maggiore|Verbano") als Set `.lake`; **nautische** POIs
-  (marina, ferry_terminal, seamark harbour/anchorage/mooring, waterway=fuel) werden im
-  ganzen Seegebiet gesucht, die **weichen** Kategorien (Gastro/Einkauf/Ausflugsziele) nur
-  `around.lake` in einem schmalen Band (`SHORE_NEAR`=80 m für Gastro/Einkauf, `SHORE_WIDE`
-  =250 m für Bäder/Sehenswürdigkeiten). Bewusst weggelassen, weil zu viel Clutter:
-  `man_made=pier` (Privatstege), `tourism=artwork` (Statuen), Slipanlagen/Service-POIs.
-- **Links im Popup:** `website`/`contact:website`/`url` → klickbarer „🌐 Website"-Link
-  (auf `http(s)://` normalisiert, `target=_blank rel=noopener noreferrer`); `phone`/
-  `contact:phone` → „☎ …" als `tel:`-Link. Seezeichen kommen NICHT über POIs, sondern
-  über das OpenSeaMap-Overlay.
-- **GPS:** Hook `src/hooks/useGeoPosition.ts` (`watchPosition`, `enableHighAccuracy`).
-  Eigene Position als pulsierender Marker + Genauigkeitskreis. **Tacho** (Overlay) zeigt
-  km/h (m/s ×3.6) und Knoten (m/s ×1.94384), `font-mono`+`tabnum`. Fehlt `coords.speed`
-  (Desktop), wird die Geschwindigkeit aus zwei Fixes geschätzt (Haversine ÷ dt). „Mich
-  zentrieren"-Button schaltet Folgen ein; eine Kartengeste beendet es wieder.
+- **POIs: kuratierte, feste Liste** in `src/lib/mapData.ts` (`CURATED_POIS`), KEIN Live-Fetch
+  mehr. Die frühere Overpass-Abfrage lieferte zu viel Clutter (hunderte Restaurants, jeder
+  Adler der Falconeria als „attraction") → kein Mehrwert ggü. Google Maps. Stattdessen ~22
+  hand­verlesene boots-relevante Ziele im nördlichen Becken (Locarno/Gambarogno bis Brissago/
+  Cannobio/Cannero), Koordinaten aus OSM gezogen. Kategorien (`CategoryKey`): `harbor`,
+  `anchor`, `fuel`, `food`, `shop`, `sights` – Marker = `L.divIcon` mit Emoji+Farbe.
+  `ACTIVE_CATEGORIES` blendet leere Kategorien aus den Filter-Chips aus (aktuell ohne
+  `anchor`/`fuel`/`shop` – für die gibt es in OSM keine verlässlichen Daten, kommt mit
+  recherchierten Geodaten nach).
+- **Links im Popup:** `website` → klickbarer „🌐 Website"-Link (auf `http(s)://` normalisiert,
+  `target=_blank rel=noopener noreferrer`); `phone` → „☎ …" als `tel:`-Link.
+- **Fahrtaufzeichnung → Logbuch:** Hook `src/hooks/useTripRecorder.ts` sammelt aus den
+  GPS-Fixes einen Track (opt-in Start/Stopp), zeigt live Strecke (km+sm), Dauer, Ø-/Max-kn
+  und zeichnet eine Polyline. Bei Stopp → „Ins Logbuch": baut einen `EntryDraft`
+  (`FormScreen`) mit nächstgelegenem Hafen (`nearestHarborName`, Haversine) als Von/Nach +
+  Eckdaten in den Notizen und springt vorbefüllt ins Formular. **Track wird NICHT persistiert**
+  (Backend-Modell ist fix, §3/§4) – nur die Fahrt-Eckdaten landen im Eintrag.
+- **GPS & Akku:** Hook `src/hooks/useGeoPosition.ts` (`watchPosition`, `enableHighAccuracy`).
+  Der Watch läuft nur, solange der Karten-Tab gemountet UND sichtbar ist (Page-Visibility:
+  Bildschirm aus/Hintergrund → Watch stoppt, kommt beim Zurückkehren wieder). **Tacho** zeigt
+  km/h (×3.6) und Knoten (×1.94384), `font-mono`+`tabnum`; fehlt `coords.speed` (Desktop),
+  Schätzung aus zwei Fixes (Haversine ÷ dt). „Mich zentrieren" schaltet Folgen ein, eine
+  Kartengeste beendet es. Geo-Mathematik (Haversine, Bearing, Einheiten) in `src/lib/geo.ts`.
+- **Mess-/Planungstool:** Button „Messen" (unten links) schaltet einen Modus, in dem zwei
+  Karten-Taps gesetzt werden (`map.on('click')` via `measuringRef`); Panel zeigt Distanz
+  (km/sm), Kurs (`bearingDeg`+`cardinal8`) und ETA beim aktuellen Tempo bzw. einem
+  Planungstempo (12 kn), wenn man steht. Linie/Punkte in eigener Layer-Gruppe.
+- **Wind-Lage:** einmaliger `fetchWind()` (Open-Meteo, `src/lib/liveData.ts`) → Badge oben
+  rechts mit Pfeil (rotiert auf `directionDeg+180`, zeigt wohin der Wind weht), Richtung
+  (woher) + kn + Böen.
+- **See-Regeln/Zonen:** `src/lib/zones.ts` – Polygon „Bolle di Magadino" (Naturschutz, aus
+  OSM way 160197486), immer als rote No-Go-Fläche mit Popup gezeichnet; Button „See-Regeln"
+  blendet eine Legende (`LAKE_RULES`) ein. **Bewusst „ohne Gewähr"**: Geometrie/Regeln sind
+  Annäherungen, offizielle Schifffahrtskarten sind massgeblich.
 - **Layout:** Die Karte braucht feste Höhe → eigenes, padding-/scrollfreies `<main>` in
   `App.tsx` (`screen === 'map'` rendert full-bleed, unabhängig vom Einträge-Ladezustand).
   `ResizeObserver` ruft `map.invalidateSize()` (mobile URL-Leiste). Popups + Attribution

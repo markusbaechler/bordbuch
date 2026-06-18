@@ -1,15 +1,18 @@
 // src/hooks/useGeoPosition.ts
-// Live-GPS via Geolocation.watchPosition: Position (für den Karten-Marker) und
-// Geschwindigkeit (für den Tacho). Knoten = m/s × 1.94384, km/h = m/s × 3.6.
+// Live-GPS via Geolocation.watchPosition: Position (Karten-Marker) und
+// Geschwindigkeit (Tacho). Knoten = m/s × 1.94384, km/h = m/s × 3.6.
 //
-// `coords.speed` ist nicht überall verfügbar (Desktop/manche Browser liefern
-// null). In dem Fall schätzen wir die Geschwindigkeit aus der Distanz zwischen
-// zwei aufeinanderfolgenden Fixes (Haversine ÷ Zeitdifferenz).
+// Akku: Der Watch läuft nur, solange dieser Hook gemountet ist (= Karten-Tab
+// offen) UND der Tab/Screen sichtbar ist. Wird der Bildschirm ausgeschaltet
+// oder die App in den Hintergrund geschoben (Page-Visibility = hidden), stoppt
+// der Watch automatisch und startet beim Zurückkehren neu. So zieht das
+// stromhungrige `enableHighAccuracy` nur, wenn man tatsächlich auf die Karte schaut.
+//
+// `coords.speed` fehlt auf vielen Geräten (Desktop) → dann schätzen wir die
+// Geschwindigkeit aus zwei Fixes (Haversine ÷ dt).
 
 import { useEffect, useRef, useState } from 'react'
-
-const MS_TO_KMH = 3.6
-const MS_TO_KN = 1.94384
+import { haversineM, MS_TO_KMH, MS_TO_KN } from '../lib/geo'
 
 export interface GeoState {
   lat: number | null
@@ -17,9 +20,12 @@ export interface GeoState {
   accuracyM: number | null // Genauigkeitsradius in Metern
   headingDeg: number | null
   speedMs: number | null // null, solange noch kein verwertbarer Wert vorliegt
+  timestamp: number | null // ms (für Track-Aufzeichnung)
   error: string | null
   supported: boolean
 }
+
+const SUPPORTED = typeof navigator !== 'undefined' && 'geolocation' in navigator
 
 const INITIAL: GeoState = {
   lat: null,
@@ -27,20 +33,9 @@ const INITIAL: GeoState = {
   accuracyM: null,
   headingDeg: null,
   speedMs: null,
+  timestamp: null,
   error: null,
-  supported: typeof navigator !== 'undefined' && 'geolocation' in navigator,
-}
-
-// Distanz zweier Koordinaten in Metern (Haversine).
-function haversineM(aLat: number, aLon: number, bLat: number, bLon: number): number {
-  const R = 6371000
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(bLat - aLat)
-  const dLon = toRad(bLon - aLon)
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(s))
+  supported: SUPPORTED,
 }
 
 export function useGeoPosition(enabled = true): GeoState {
@@ -49,7 +44,9 @@ export function useGeoPosition(enabled = true): GeoState {
   const lastFix = useRef<{ lat: number; lon: number; t: number } | null>(null)
 
   useEffect(() => {
-    if (!enabled || !INITIAL.supported) return
+    if (!enabled || !SUPPORTED) return
+
+    let watchId: number | null = null
 
     const onOk = (pos: GeolocationPosition) => {
       const { latitude, longitude, accuracy, speed, heading } = pos.coords
@@ -71,6 +68,7 @@ export function useGeoPosition(enabled = true): GeoState {
         accuracyM: accuracy ?? null,
         headingDeg: heading != null && !Number.isNaN(heading) ? heading : null,
         speedMs,
+        timestamp: pos.timestamp,
         error: null,
         supported: true,
       })
@@ -86,12 +84,31 @@ export function useGeoPosition(enabled = true): GeoState {
       setState((s) => ({ ...s, error: msg }))
     }
 
-    const id = navigator.geolocation.watchPosition(onOk, onErr, {
-      enableHighAccuracy: true,
-      maximumAge: 2000,
-      timeout: 15000,
-    })
-    return () => navigator.geolocation.clearWatch(id)
+    const start = () => {
+      if (watchId != null) return
+      lastFix.current = null // nach Pause neu schätzen
+      watchId = navigator.geolocation.watchPosition(onOk, onErr, {
+        enableHighAccuracy: true,
+        maximumAge: 2000,
+        timeout: 15000,
+      })
+    }
+    const stop = () => {
+      if (watchId != null) {
+        navigator.geolocation.clearWatch(watchId)
+        watchId = null
+      }
+    }
+
+    // Akku: bei verstecktem Tab/Screen pausieren.
+    const onVisibility = () => (document.hidden ? stop() : start())
+    document.addEventListener('visibilitychange', onVisibility)
+    if (!document.hidden) start()
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      stop()
+    }
   }, [enabled])
 
   return state

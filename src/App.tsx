@@ -8,7 +8,7 @@ import { MapScreen } from './screens/MapScreen'
 import { ListScreen } from './screens/ListScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { DetailScreen } from './screens/DetailScreen'
-import { FormScreen } from './screens/FormScreen'
+import { FormScreen, type EntryDraft } from './screens/FormScreen'
 import { useEntries } from './hooks/useEntries'
 import { useThemeMode } from './hooks/useThemeMode'
 import {
@@ -50,6 +50,7 @@ function Shell() {
   const [screen, setScreen] = useState<Screen>('conditions')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editing, setEditing] = useState<Entry | null>(null)
+  const [tripDraft, setTripDraft] = useState<EntryDraft | null>(null)
   const [saving, setSaving] = useState(false)
 
   const { entries, loading, error, reload, createEntry, updateEntry, deleteEntry } = useEntries()
@@ -84,10 +85,18 @@ function Shell() {
   }
   function openNew() {
     setEditing(null)
+    setTripDraft(null)
     setScreen('new')
   }
   function openEdit(e: Entry) {
     setEditing(e)
+    setTripDraft(null)
+    setScreen('new')
+  }
+  // Aus einer aufgezeichneten Kartenfahrt einen neuen Eintrag vorbefüllen.
+  function handleLogTrip(draft: EntryDraft) {
+    setEditing(null)
+    setTripDraft(draft)
     setScreen('new')
   }
 
@@ -102,6 +111,7 @@ function Shell() {
         toast.success('Eintrag gespeichert')
       }
       setEditing(null)
+      setTripDraft(null)
       setScreen('list')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Speichern fehlgeschlagen')
@@ -134,7 +144,7 @@ function Shell() {
       <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-surface shadow-[var(--shadow)]">
         <Topbar mode={mode} onToggleMode={toggleMode} />
         <main className="relative flex-1 overflow-hidden">
-          <MapScreen />
+          <MapScreen onLogTrip={handleLogTrip} />
         </main>
         <BottomNav active={screen} onNavigate={handleNavigate} />
       </div>
@@ -173,12 +183,14 @@ function Shell() {
         {!loading && !error && screen === 'new' && (
           <FormScreen
             editing={editing}
+            draft={tripDraft ?? undefined}
             lastEngineHours={lastEngineHours}
             knownHarbors={knownHarbors}
             knownPaidBy={knownPaidBy}
             saving={saving}
             onCancel={() => {
               setEditing(null)
+              setTripDraft(null)
               setScreen(editing ? 'detail' : 'list')
             }}
             onSubmit={handleSubmit}
