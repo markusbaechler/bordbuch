@@ -1,19 +1,22 @@
 /** Bootsname + Standort – hier zentral änderbar. */
 const BOAT = { name: 'Regal', location: 'Ascona · Lago Maggiore' } as const
 
-/** Kopfzeile: Markenname + Tag/Nacht-Umschalter (echtes Feature, CLAUDE.md §7). */
+/** Kopfzeile: aktueller Bereich + Tag/Nacht-Umschalter (echtes Feature, CLAUDE.md §7). */
 export function Topbar({
+  title,
   mode,
   onToggleMode,
 }: {
+  /** Titel des aktuellen Bereichs (Wetter / Karte / Bordbuch / Logbuch) */
+  title: string
   mode: 'day' | 'night'
   onToggleMode: () => void
 }) {
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-[18px] pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="flex-1 leading-none">
-        <div className="font-display text-[21px] font-bold tracking-[0.14em] text-ink">
-          BORDBUCH
+        <div className="font-display text-[21px] font-bold uppercase tracking-[0.14em] text-ink">
+          {title}
         </div>
         <div className="mt-[3px] flex items-center gap-1.5 text-[11px] tracking-wide text-ink-2">
           <span className="h-1.5 w-1.5 rounded-full bg-teal shadow-[0_0_0_3px_var(--teal-soft)]" />

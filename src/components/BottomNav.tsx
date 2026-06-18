@@ -62,7 +62,7 @@ export function BottomNav({
         icon={<IconMap />}
       />
       <NavButton
-        label="Dashboard"
+        label="Bordbuch"
         active={active === 'dash'}
         onClick={() => onNavigate('dash')}
         icon={<IconDashboard />}

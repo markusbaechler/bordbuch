@@ -89,6 +89,11 @@ Beibehalten: Chartplotter-/Instrument-Optik, Tag/Nacht (mit Persistenz, prefers-
 als Default), mobile-first, full-bleed (KEIN Geräterahmen), grosse Touch-Targets, Quality-Floor
 (focus-visible, prefers-reduced-motion, safe-area, responsive ≤360px).
 
+**Kopfzeile & Navigation:** Die `Topbar` zeigt als Titel den **aktuellen Bereich** (`SCREEN_TITLE`
+in `App.tsx`): Wetter / Karte / Bordbuch / Logbuch (Detail/Neu zählen zu „Logbuch"); darunter als
+Untertitel weiterhin Bootsname · Ort. Die Bottom-Nav heisst entsprechend **Wetter · Karte · Bordbuch
+· Logbuch** (+ FAB „Neu") – der frühere „Dashboard"-Tab ist die Bordbuch-Übersicht.
+
 **Farb-Tokens (maritim, KEIN Orange mehr):**
 - Tag: bg `#E6EDF2`, surface `#FFFFFF`, surface-2 `#F2F6F9`, ink `#0A2233`, ink-2 `#52708A`,
   line `#D5E0E8`, **Akzent (Primär/CTA) `#1C5C8C` (Marineblau)**, Wasser/aktiv `#0C7C82` (Teal).

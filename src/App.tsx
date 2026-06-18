@@ -36,6 +36,16 @@ function uniqueNonEmpty(values: unknown[]): string[] {
   return [...new Set(values.map((v) => String(v ?? '').trim()).filter((v) => v.length > 0))]
 }
 
+// Kopfzeilen-Titel je Bereich (Detail/Neu gehören zum Logbuch).
+const SCREEN_TITLE: Record<Screen, string> = {
+  conditions: 'Wetter',
+  map: 'Karte',
+  dash: 'Bordbuch',
+  list: 'Logbuch',
+  detail: 'Logbuch',
+  new: 'Logbuch',
+}
+
 export default function App() {
   return (
     <ToastProvider>
@@ -142,7 +152,7 @@ function Shell() {
   if (screen === 'map') {
     return (
       <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-surface shadow-[var(--shadow)]">
-        <Topbar mode={mode} onToggleMode={toggleMode} />
+        <Topbar title={SCREEN_TITLE[screen]} mode={mode} onToggleMode={toggleMode} />
         <main className="relative flex-1 overflow-hidden">
           <MapScreen onLogTrip={handleLogTrip} />
         </main>
@@ -153,7 +163,7 @@ function Shell() {
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-surface shadow-[var(--shadow)]">
-      <Topbar mode={mode} onToggleMode={toggleMode} />
+      <Topbar title={SCREEN_TITLE[screen]} mode={mode} onToggleMode={toggleMode} />
 
       <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-[18px]">
         {!isConfigured && <ConfigWarning />}
