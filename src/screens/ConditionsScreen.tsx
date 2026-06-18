@@ -18,6 +18,7 @@ import { fetchWaterTempYear } from '../lib/waterTemp'
 import { Eyebrow } from '../components/Eyebrow'
 import { Spinner } from '../components/Spinner'
 import { Modal } from '../components/Modal'
+import { WeatherReport } from '../components/WeatherReport'
 import { LineChart, type ChartSeries, type ChartXTick } from '../components/LineChart'
 
 const COND = "'Barlow Condensed', sans-serif"
@@ -138,6 +139,12 @@ export function ConditionsScreen() {
           }
           onOpen={() => setModal('water')}
         />
+      </div>
+
+      {/* Wetter & Wind über den ganzen See (+ Prognose) */}
+      <Eyebrow>Wetter & Wind · ganzer See</Eyebrow>
+      <div className="mb-[22px]">
+        <WeatherReport />
       </div>
 
       {/* Aktualisieren */}

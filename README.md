@@ -97,7 +97,9 @@ https://<dein-user>.github.io/bordbuch/
 
 ## 4. Live-Conditions „Vor der Abfahrt"
 
-Der Start-Tab zeigt Live-Daten für Locarno. Quellen:
+Der Start-Tab zeigt Live-Daten für Locarno (Wind-Ampel, Pegel, Wassertemperatur) und – im
+Abschnitt **„Wetter & Wind · ganzer See"** – den seeweiten Wetterbericht mit Stunden- und
+Tagesprognose (dieselbe Ansicht wie im Wetter-Modal der Karte). Quellen:
 
 | Kennzahl | Quelle | Zugriff |
 |---|---|---|
@@ -142,8 +144,9 @@ node scripts/gen-icons.mjs   # schreibt nach public/
 
 ## 6. Seekarte & GPS-Tacho
 
-Der Tab **„Karte"** zeigt eine interaktive Seekarte für den nördlichen Lago Maggiore
-(Locarno/Ascona) auf Basis von [Leaflet](https://leafletjs.com/):
+Der Tab **„Karte"** zeigt eine interaktive Seekarte für den Lago Maggiore auf Basis von
+[Leaflet](https://leafletjs.com/) – beim Öffnen ist standardmässig der **ganze See** im Bild
+(nicht der Standort):
 
 - **Kacheln:** OpenStreetMap als Basis, darüber das halbtransparente
   OpenSeaMap-Seezeichen-Overlay (Tonnen, Untiefen, Fährlinien).

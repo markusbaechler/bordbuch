@@ -224,10 +224,14 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
   greift). Seepolygon erzeugt via `scripts/fetch-lake.mjs` (OSM Relation 11758, ~470 Punkte).
 - **Wetter & Wind über den ganzen See:** `fetchLakeConditions()` (`liveData.ts`) holt in EINER
   Open-Meteo-Anfrage 6 Punkte (Locarno…Stresa). Badge oben rechts = Conditions am nächsten Punkt
-  zur GPS-Position (Emoji/Temp/Wind/Regen) und **öffnet ein Wetter-Modal** (`WeatherReport`):
-  Jetzt-Tabelle aller 6 Punkte + **Stunden- und Tagesprognose** (`fetchLakeForecast()`,
-  repräsentativer Punkt Seemitte). Im Modal ein Toggle „Wind-Pfeile auf der Karte" → blendet das
-  **Wind-Feld** ein (`windIcon` je Punkt) inkl. **Legende** auf der Karte (Pfeil = Richtung, Zahl = kn).
+  zur GPS-Position (Emoji/Temp/Wind/Regen) und **öffnet ein Wetter-Modal** mit der wiederverwendbaren
+  Komponente **`src/components/WeatherReport.tsx`**: Jetzt-Tabelle aller 6 Punkte + **Stunden- und
+  Tagesprognose** (`fetchLakeForecast()`, repräsentativer Punkt Seemitte). Dieselbe Komponente steht
+  auch **im Wetter-Tab** (`ConditionsScreen`, Abschnitt „Wetter & Wind · ganzer See"; lädt dann selbst,
+  ohne Wind-Toggle). Im Modal ein Toggle „Wind-Pfeile auf der Karte" → blendet das **Wind-Feld** ein
+  (`windIcon` je Punkt) inkl. **Legende** auf der Karte (Pfeil = Richtung, Zahl = kn).
+- **Default-Ansicht:** `map.fitBounds(LAKE_OUTLINE)` → die Karte zeigt beim Öffnen den **ganzen Lago
+  Maggiore** (nicht den Standort); kein Auto-Folgen (`follow` startet false, erst „Mich zentrieren").
 - **See-Regeln/Zonen (nur wenn aktiviert):** Button „See-Regeln" zeichnet die **Uferzone als 150-m-
   Band**: `shoreZoneRing(150)` (`route.ts`) versetzt die Küstenlinie 150 m INS WASSER (Tangenten-
   Normale, Richtung per `inLake`-Test; verifiziert Median 150 m), gefüllt als Polygon mit Loch
