@@ -240,6 +240,8 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
   sind über CSS-Variablen an Tag/Nacht gekoppelt (`src/index.css`). Karten-Overlays liegen auf
   `z-[900]`/`z-[1000]` → der `Modal` (Wetter/Standort-Hilfe) muss DARÜBER liegen: `z-[1200]`
   (sonst überlagern Tacho/Buttons das Modal inkl. ✕). Standort-Hilfe erkennt installierte PWA
-  (`display-mode: standalone`) und zeigt dann die App-Berechtigungs-Anleitung statt der Schloss-Symbol-Variante.
+  (`display-mode: standalone`): Bei einem Chrome-**WebAPK** liegt die Geo-Freigabe NICHT in den
+  Android-App-Berechtigungen (dort nur „Benachrichtigungen"), sondern in den **Chrome-Website-
+  Einstellungen** pro Origin → die Hilfe verweist genau dorthin (inkl. `location.host`).
 - **SW/Caching:** Kartenkacheln sind Fremd-Origin → der Service-Worker fängt sie nicht ab
   (direkt ans Netz), wie bei den übrigen Live-Daten.

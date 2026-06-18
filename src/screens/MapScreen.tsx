@@ -769,14 +769,24 @@ function GeoHelp({ denied, onRetry, onClose }: { denied: boolean; onRetry: () =>
           </p>
           {standalone ? (
             <>
-              <p className="mb-1 font-semibold text-ink">Installierte App (Android)</p>
+              <p className="mb-2 text-ink-2">
+                Die installierte App nutzt <strong>Chrome</strong> im Hintergrund. Der Standort
+                steckt darum in den <strong>Chrome-Website-Einstellungen</strong>, NICHT in den
+                App-Berechtigungen (dort steht nur „Benachrichtigungen").
+              </p>
+              <p className="mb-1 font-semibold text-ink">Android · installierte App</p>
               <ol className="mb-3 list-decimal space-y-0.5 pl-5">
-                <li>Android-<strong>Einstellungen</strong> → <strong>Apps</strong> → <strong>Bordbuch</strong>.</li>
-                <li><strong>Berechtigungen</strong> → <strong>Standort</strong> → <strong>Zulassen</strong> (bzw. „Bei App-Nutzung").</li>
-                <li>App schliessen und neu öffnen.</li>
+                <li><strong>Chrome</strong> öffnen (den Browser).</li>
+                <li>⋮ Menü → <strong>Einstellungen</strong> → <strong>Website-Einstellungen</strong> → <strong>Standort</strong>.</li>
+                <li>
+                  Eintrag <strong className="break-all">{typeof location !== 'undefined' ? location.host : 'github.io'}</strong> suchen
+                  (ggf. unter „Blockiert") → antippen → <strong>Zulassen</strong>.
+                </li>
+                <li>Bordbuch-App schliessen und neu öffnen.</li>
               </ol>
               <p className="mb-3 text-ink-3">
-                Tipp: Lange auf das App-Icon → „App-Info" → Berechtigungen führt zum selben Ort.
+                Schneller Alternativweg: die Seite in <strong>Chrome</strong> öffnen, dann beim
+                Standort-Symbol in der Adresszeile freigeben.
               </p>
             </>
           ) : (
