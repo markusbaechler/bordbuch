@@ -490,10 +490,11 @@ function MaintenancePanel({
           ) : (
             <>
               <p className="mb-3 text-[11px] leading-snug text-ink-2">
-                Stand je Position antippbar (✎) und auf <b className="text-ink">MM.JJ</b> setzbar.
-                Ohne eigenes Datum wird der Saisonstart{' '}
+                Stand je Position auf <b className="text-ink">MM.JJ</b> setzbar (✎). Jahresarbeiten
+                werden ab Saisonstart{' '}
                 <b className="tabnum font-mono text-ink">{formatMonthYY(report.serviceDate ?? '')}</b>{' '}
-                angenommen ({customCount > 0 ? `${customCount} manuell gesetzt` : 'alle automatisch'}).
+                angenommen; mehrjährige Posten brauchen ein eigenes Datum (
+                {customCount > 0 ? `${customCount} manuell gesetzt` : 'noch keine gesetzt'}).
                 {report.newSeasonPending && (
                   <span className="text-[#E8930C]"> · Neue Saison – Service vor erstem Start fällig.</span>
                 )}
@@ -527,7 +528,9 @@ function MaintRow({
 
   // Rechte Spalte: knappster aussagekräftiger Hinweis.
   let detail = ''
-  if (item.status === 'due') {
+  if (item.status === 'unknown') {
+    detail = 'Datum setzen'
+  } else if (item.status === 'due') {
     detail =
       item.dueInHours !== null && item.dueInHours < 0
         ? `${fmt(-item.dueInHours, 0)} h drüber`

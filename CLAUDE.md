@@ -308,11 +308,16 @@ Jahres-Chip-Reihe mehr (sparte zu viel Platz).
   fix, §3/§4). Ohne Override = Default „erster Eintrag des jüngsten Jahres" (Winterlager-Annahme).
   Stunden-Baseline zum gesetzten Monat kommt aus dem Logbuch (`engineHoursAtDate`, Stand am
   Monatsende). Bewertung dynamisch gegen Stunden- UND Monatsintervall (`fraction = max`), Ampel
-  ok/bald(≥80 %)/fällig. `MAINTENANCE_SCHEDULE` = Volvo-Penta-Benzin-Richtwerte (Süsswasser):
-  Motoröl 100 h/12 Mt., Z-Antrieb-Öl, Kraftstofffilter, Impeller, Zündkerzen, Faltenbälge/Kardan,
-  Anoden, Riemen, Kühlmittel. `newSeasonPending` markiert „neue Saison ohne Service-Eintrag".
-  **Richtwerte, „ohne Gewähr" – offizielles Manual massgeblich.** Status-Farben:
-  `--good`/Amber `#E8930C`/`--danger`.
+  ok/bald(≥80 %)/fällig; **mehrjährige Posten ohne eigenes Datum bleiben `unknown` → „Datum
+  setzen"** (kein falsches „erledigt" für sicherheitskritische Teile wie den Balg). Default ab
+  Saisonstart gilt NUR für Jahresarbeiten (`intervalMonths ≤ ANNUAL_MONTHS = 12`).
+  `MAINTENANCE_SCHEDULE` = Volvo-Penta-Benzin auf **Süsswasser** (Lago Maggiore, geringere
+  Korrosion → Impeller/Anoden/Kerzen grosszügiger): jährlich/100 h → Motoröl, Kraftstofffilter,
+  Sterndrive-Getriebeöl; jährliche Kontrollen → Anoden, Balg/U-Gelenke, Winterlager-Service;
+  mehrjährig → Impeller (~3 J./200 h), Zündkerzen (~3 J./200 h), Kühlmittel+Kraftstoffleitungen
+  (~5 J.), Sterndrive-Balg erneuern (~5–7 J.). `newSeasonPending` markiert „neue Saison ohne
+  Service-Eintrag". **Richtwerte, „ohne Gewähr" – offizielles Manual massgeblich.** Status-Farben:
+  `--good`/Amber `#E8930C`/`--danger`/`--ink-3` (unknown).
 
 ## 18. Tests (Vitest)
 `npm test` (= `vitest run`), `npm run test:watch`. Eigene `vitest.config.ts` (node-Env, ohne

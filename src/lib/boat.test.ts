@@ -141,11 +141,20 @@ describe('maintenanceReport – manuelle Overrides (MM.JJ)', () => {
     expect(imp.status).toBe('due') // 360 h > 200 h und >24 Mt.
   })
 
-  it('ohne Override fällt die Position auf den abgeleiteten Saisonstart zurück', () => {
+  it('Jahresarbeit ohne Override → abgeleiteter Saisonstart', () => {
     const rep = maintenanceReport(entries, new Date(2026, 5, 18))
-    const imp = rep.items.find((i) => i.key === 'impeller')!
-    expect(imp.lastDoneSource).toBe('derived')
-    expect(imp.lastDone).toBe('2026-04-10') // erster 2026-Eintrag
+    const oil = rep.items.find((i) => i.key === 'engine-oil')! // 12 Mt.
+    expect(oil.lastDoneSource).toBe('derived')
+    expect(oil.lastDone).toBe('2026-04-10') // erster 2026-Eintrag
+  })
+
+  it('mehrjährige Position ohne Override → unknown (Datum setzen)', () => {
+    const rep = maintenanceReport(entries, new Date(2026, 5, 18))
+    const imp = rep.items.find((i) => i.key === 'impeller')! // 36 Mt.
+    expect(imp.lastDoneSource).toBe('none')
+    expect(imp.status).toBe('unknown')
+    const bellows = rep.items.find((i) => i.key === 'bellows-replace')! // 72 Mt.
+    expect(bellows.status).toBe('unknown')
   })
 })
 

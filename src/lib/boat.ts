@@ -111,21 +111,30 @@ export interface MaintenanceItem {
 }
 
 /**
- * Richtintervalle Volvo Penta Benzin-Z-Antrieb (Süsswasser). Jahres-Kadenz führt
- * (jährlicher Service im Winterlager); Stunden-Caps greifen als Frühwarnung in
- * stundenintensiven Saisons. Richtwerte – offizielles Manual massgeblich.
+ * Serviceplan Volvo Penta Benzin-Z-Antrieb, auf **Süsswasser** (Lago Maggiore)
+ * angepasst – Korrosion deutlich geringer, daher Impeller/Anoden/Kerzen grosszügiger
+ * als bei Salzwasser. Jahresarbeiten (≤ 12 Mt.) werden bei fehlendem eigenen Datum
+ * ab Saisonstart abgeleitet; mehrjährige Posten (> 12 Mt.) verlangen ein manuelles
+ * Datum (sonst keine Annahme „erledigt"). Richtwerte – offizielles Manual massgeblich.
  */
 export const MAINTENANCE_SCHEDULE: MaintenanceItem[] = [
+  // Jährlich oder 100 h – sehr wichtig.
   { key: 'engine-oil', label: 'Motoröl & Ölfilter', intervalHours: 100, intervalMonths: 12, note: 'jährlich oder 100 h' },
-  { key: 'drive-oil', label: 'Z-Antrieb-Öl', intervalHours: 200, intervalMonths: 12, note: 'jährlich' },
-  { key: 'fuel-filter', label: 'Kraftstofffilter / Wasserabscheider', intervalHours: 100, intervalMonths: 12, note: 'jährlich oder 100 h' },
-  { key: 'impeller', label: 'Seewasser-Impeller', intervalHours: 200, intervalMonths: 24, note: 'Kontrolle jährlich, Wechsel ~2 J.' },
-  { key: 'spark-plugs', label: 'Zündkerzen', intervalHours: 200, intervalMonths: 24, note: 'Original VP bis 3 J.' },
-  { key: 'bellows', label: 'Faltenbälge & Kardanlager', intervalHours: null, intervalMonths: 12, note: 'Kontrolle/Schmierung jährlich' },
-  { key: 'anodes', label: 'Opferanoden', intervalHours: null, intervalMonths: 12, note: 'Süsswasser – jährlich prüfen' },
-  { key: 'belt', label: 'Keilrippenriemen & Schläuche', intervalHours: null, intervalMonths: 12, note: 'Sichtkontrolle jährlich' },
-  { key: 'coolant', label: 'Kühlmittel (bei Frischwasserkühlung)', intervalHours: null, intervalMonths: 24, note: 'nur Modelle mit FWC' },
+  { key: 'fuel-filter', label: 'Kraftstofffilter', intervalHours: 100, intervalMonths: 12, note: 'jährlich oder 100 h' },
+  { key: 'drive-oil', label: 'Sterndrive-Getriebeöl', intervalHours: 100, intervalMonths: 12, note: 'jährlich – schützt vor Feuchtigkeit' },
+  // Jährliche Kontrollen.
+  { key: 'anodes', label: 'Anoden prüfen', intervalHours: null, intervalMonths: 12, note: 'Süsswasser hält länger, bei >50 % wechseln' },
+  { key: 'bellows-check', label: 'Balg & U-Gelenke prüfen', intervalHours: null, intervalMonths: 12, note: 'jährlich auf Risse/Falten · Nippel fetten' },
+  { key: 'winter-service', label: 'Winterlager-Komplettservice', intervalHours: null, intervalMonths: 12, note: 'Saisonende: Motor foggen, Batterie pflegen' },
+  // Mehrjährig – brauchen ein manuelles „zuletzt"-Datum (✎).
+  { key: 'impeller', label: 'Impeller wechseln', intervalHours: 200, intervalMonths: 36, note: 'Süsswasser ~2–3 J. (jährlich prüfen)' },
+  { key: 'spark-plugs', label: 'Zündkerzen & -kabel', intervalHours: 200, intervalMonths: 36, note: 'alle 2–3 J. bzw. 200 h' },
+  { key: 'coolant-fuel', label: 'Kühlmittel & Kraftstoffleitungen', intervalHours: null, intervalMonths: 60, note: 'alle ~5 J. (Frischwasserkühlung)' },
+  { key: 'bellows-replace', label: 'Sterndrive-Balg erneuern', intervalHours: null, intervalMonths: 72, note: 'alle 5–7 J. – sicherheitskritisch' },
 ]
+
+/** Jahresarbeit (≤ 12 Mt.) → wird ohne eigenes Datum ab Saisonstart abgeleitet. */
+const ANNUAL_MONTHS = 12
 
 export type MaintStatus = 'ok' | 'soon' | 'due' | 'unknown'
 export type MaintSource = 'override' | 'derived' | 'none'
@@ -238,12 +247,15 @@ export function maintenanceReport(
 
     const override = overrides[item.key]
     const bounds = override ? monthBounds(override) : null
+    const isAnnual = item.intervalMonths != null && item.intervalMonths <= ANNUAL_MONTHS
     if (bounds) {
       lastDone = override
       lastDoneSource = 'override'
       baseDate = bounds.start
       baseHours = engineHoursAtDate(entries, bounds.end) // Stand am Monatsende
-    } else if (serviceDate) {
+    } else if (serviceDate && isAnnual) {
+      // Nur Jahresarbeiten ab Saisonstart annehmen. Mehrjährige Posten bleiben
+      // „unbekannt", bis ein Datum gesetzt wird (kein falsches „erledigt").
       lastDone = serviceDate
       lastDoneSource = 'derived'
       baseDate = parseDate(serviceDate)
