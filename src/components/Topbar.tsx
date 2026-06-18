@@ -1,5 +1,4 @@
-/** Bootsname + Standort – hier zentral änderbar. */
-const BOAT = { name: 'Regal', location: 'Ascona · Lago Maggiore' } as const
+import { BOAT_PROFILE } from '../lib/boat'
 
 /** Kopfzeile: aktueller Bereich + Tag/Nacht-Umschalter (echtes Feature, CLAUDE.md §7). */
 export function Topbar({
@@ -20,7 +19,7 @@ export function Topbar({
         </div>
         <div className="mt-[3px] flex items-center gap-1.5 text-[11px] tracking-wide text-ink-2">
           <span className="h-1.5 w-1.5 rounded-full bg-teal shadow-[0_0_0_3px_var(--teal-soft)]" />
-          {BOAT.name} · {BOAT.location}
+          {BOAT_PROFILE.shortName} · {BOAT_PROFILE.location}
         </div>
       </div>
       <button

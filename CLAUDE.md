@@ -1,4 +1,4 @@
-# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v4 (Seekarte + GPS-Tacho)
+# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v5 (Tank-/Restreichweite + Wartung)
 
 WICHTIG: Logbuch/CRUD/Dashboard (§1–§11) sind umgesetzt. v3 ergänzt das Feature
 **„Vor der Abfahrt"** (Live-Wetter/Pegel/Wassertemperatur, §14), die **History-Modals**
@@ -280,3 +280,36 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
   Einstellungen** pro Origin → die Hilfe verweist genau dorthin (inkl. `location.host`).
 - **SW/Caching:** Kartenkacheln sind Fremd-Origin → der Service-Worker fängt sie nicht ab
   (direkt ans Netz), wie bei den übrigen Live-Daten.
+
+## 17. Boot-Profil, Tank-/Restreichweite & Wartung (v5)
+Im Bordbuch-Screen (`DashboardScreen`) zwei neue, **rein abgeleitete** Blöcke (kein Backend,
+keine neue Dep, keine Persistenz) – Logik + Boot-Profil in `src/lib/boat.ts`, getestet in
+`src/lib/boat.test.ts`.
+
+- **Boot-Profil** `BOAT_PROFILE` (zentrale Single Source, auch von `Topbar` genutzt):
+  Regal 2750 Cuddy, Volvo Penta, Bj. 2007, Tank **290 l**, Annahme-Marschfahrt `cruiseKn = 18`
+  (NUR für die grobe sm-Angabe).
+- **Tank & Reichweite** (`tankRange(entries, avgLh)`): Reichweite ehrlich in **Motorstunden**
+  (Liter ÷ exaktem Ø-Verbrauch aus `totalStats`), da das Logbuch keine Distanz/Geschwindigkeit
+  speichert; sm nur als grobe Zusatzschätzung („~18 kn", ohne Gewähr). **(a) Statisch:** volle
+  Tankfüllung = 290 ÷ Ø l/h. **(b) Aktuell:** seit dem letzten Tankstopp (Eintrag mit
+  `fuelLiters>0`) geschätzter Verbrauch von 290 l abgezogen → Restliter/-stunden + Füllstands­-
+  balken (grün>50 %, amber 20–50 %, rot<20 %). **Annahme: zuletzt voll getankt**, klar
+  ausgewiesen. Ohne Ø-Verbrauch/Tankstopp gibt es nur den statischen Wert.
+- **Wartung & Service** (aufklappbarer Accordion, `maintenanceReport(entries, today)`): Der
+  „letzte Service" wird aus dem **ersten Eintrag des jüngsten Jahres** abgeleitet (Annahme: die
+  Arbeiten passieren beim ersten Gebrauch pro Jahr im Winterlager) – KEINE manuelle Eingabe.
+  Jede Position wird dynamisch gegen Stunden- UND Monatsintervall bewertet (`fraction = max`),
+  Ampel ok/bald(≥80 %)/fällig. `MAINTENANCE_SCHEDULE` = Volvo-Penta-Benzin-Richtwerte
+  (Süsswasser, jährlicher Service): Motoröl 100 h/12 Mt., Z-Antrieb-Öl, Kraftstofffilter,
+  Impeller, Zündkerzen, Faltenbälge/Kardan, Anoden, Riemen, Kühlmittel. `newSeasonPending`
+  markiert „neue Saison ohne Service-Eintrag". **Richtwerte, „ohne Gewähr" – offizielles Manual
+  massgeblich.** Status-Farben: `--good`/Amber `#E8930C`/`--danger`.
+
+## 18. Tests (Vitest)
+`npm test` (= `vitest run`), `npm run test:watch`. Eigene `vitest.config.ts` (node-Env, ohne
+React/Tailwind-Plugin); Testdateien aus `tsconfig.app.json` ausgeschlossen → Pages-Build
+(`tsc -b`) unberührt. Abgedeckt (reine Logik): `calc.ts` (Stunden/Verbrauch/Aggregate),
+`geo.ts` (Haversine/Bearing/Einheiten), `route.ts` (`inLake`/`routeOnWater`/`shoreZoneRing`/
+`nearestHarborName`), `boat.ts` (Tank-/Restreichweite, Wartungs-Report). Vor jedem Deploy
+sinnvoll: `npm test` grün halten.

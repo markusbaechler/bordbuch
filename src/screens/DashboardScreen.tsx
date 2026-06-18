@@ -3,6 +3,30 @@ import type { Entry } from '../lib/types'
 import { totalStats, yearStatsAll, type YearStats } from '../lib/calc'
 import { fmt } from '../lib/format'
 import { Eyebrow } from '../components/Eyebrow'
+import {
+  BOAT_PROFILE,
+  tankRange,
+  maintenanceReport,
+  maintenanceSummary,
+  type TankRange,
+  type MaintStatus,
+  type MaintenanceResult,
+  type MaintenanceReport,
+} from '../lib/boat'
+
+// Status-Farben der Wartungs-Ampel (Amber wie im Wetter-Tab, kein eigenes Token).
+const STATUS_COLOR: Record<MaintStatus, string> = {
+  ok: 'var(--good)',
+  soon: '#E8930C',
+  due: 'var(--danger)',
+  unknown: 'var(--ink-3)',
+}
+const STATUS_LABEL: Record<MaintStatus, string> = {
+  ok: 'ok',
+  soon: 'bald',
+  due: 'fällig',
+  unknown: '–',
+}
 
 type ChartMetric = 'hours' | 'entries' | 'fuel'
 
@@ -21,6 +45,8 @@ function metricValue(y: YearStats, m: ChartMetric): number {
 export function DashboardScreen({ entries }: { entries: Entry[] }) {
   const total = useMemo(() => totalStats(entries), [entries])
   const years = useMemo(() => yearStatsAll(entries), [entries]) // aufsteigend
+  const range = useMemo(() => tankRange(entries, total.avgConsumptionLh), [entries, total])
+  const maint = useMemo(() => maintenanceReport(entries, new Date()), [entries])
   const [metric, setMetric] = useState<ChartMetric>('hours')
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
 
@@ -53,6 +79,13 @@ export function DashboardScreen({ entries }: { entries: Entry[] }) {
         />
         <Gauge label="Einträge" value={String(total.entryCount)} tick="gesamt" />
       </div>
+
+      {/* TANK & REICHWEITE */}
+      <Eyebrow>Tank &amp; Reichweite</Eyebrow>
+      <TankPanel range={range} />
+
+      {/* WARTUNG / SERVICE (aufklappbar) */}
+      <MaintenancePanel report={maint} />
 
       {/* (b) Ø PRO JAHR */}
       <Eyebrow>Ø pro Jahr</Eyebrow>
@@ -285,6 +318,229 @@ function DCell({
           {sub}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ----------------------------- Tank & Reichweite ----------------------------- */
+
+// Farbe der Füllstands-Anzeige: grün > 50 %, amber 20–50 %, rot < 20 %.
+function fuelColor(pct: number): string {
+  return pct < 20 ? 'var(--danger)' : pct < 50 ? '#E8930C' : 'var(--good)'
+}
+
+function TankPanel({ range }: { range: TankRange }) {
+  if (range.fullTankHours === null) {
+    return (
+      <p className="mb-[22px] rounded-2xl border border-line bg-surface-2 px-4 py-5 text-center text-[13px] text-ink-3">
+        Noch kein Ø-Verbrauch bekannt – erfasse einen Tankstopp (Liter), dann erscheint die
+        Reichweite.
+      </p>
+    )
+  }
+
+  const nm = (n: number | null) => (n === null ? '–' : fmt(n, 0))
+
+  return (
+    <div className="mb-[22px] rounded-2xl border border-line bg-surface-2 px-3.5 pb-3.5 pt-3.5">
+      {range.hasCurrent && range.currentPct !== null ? (
+        <>
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+              Aktuell im Tank (Schätzung)
+            </span>
+            <span className="tabnum font-mono text-[13px] font-bold text-ink">
+              ≈ {fmt(range.currentLiters, 0)} l
+              <span className="ml-1 font-sans text-[11px] font-medium text-ink-2">
+                / {BOAT_PROFILE.tankLiters} l
+              </span>
+            </span>
+          </div>
+          {/* Füllstandsbalken */}
+          <div className="mb-2.5 h-2.5 overflow-hidden rounded-full bg-line">
+            <i
+              className="block h-full rounded-full"
+              style={{
+                width: `${Math.max(range.currentPct, 2)}%`,
+                background: fuelColor(range.currentPct),
+              }}
+            />
+          </div>
+          <div className="mb-3 grid grid-cols-2 gap-[11px]">
+            <RangeCell
+              label="Restreichweite"
+              value={nm(range.currentHours)}
+              unit="h"
+              sub={`≈ ${nm(range.currentNm)} sm`}
+            />
+            <RangeCell
+              label="Seit Tankstopp"
+              value={nm(range.hoursSinceFill)}
+              unit="h"
+              sub="gefahren"
+            />
+          </div>
+          <p className="text-[10px] leading-snug text-ink-3">
+            Annahme: zuletzt voll getankt. Schätzung aus Ø-Verbrauch ≈ {fmt(range.avgConsumptionLh)}{' '}
+            l/h · ohne Gewähr.
+          </p>
+        </>
+      ) : (
+        <p className="mb-3 text-[11px] leading-snug text-ink-3">
+          Für die aktuelle Tankfüllung fehlt ein Tankstopp mit Litern + Zählerstand. Unten die
+          Reichweite einer vollen Tankfüllung.
+        </p>
+      )}
+
+      {/* Statisch: ganze Tankfüllung */}
+      <div className="mt-1 flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2.5">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-2">
+          Volle Tankfüllung
+        </span>
+        <span className="tabnum font-mono text-[13px] font-bold text-ink">
+          ≈ {nm(range.fullTankHours)} h
+          <span className="ml-1.5 font-sans text-[11px] font-medium text-ink-2">
+            · {nm(range.fullTankNm)} sm bei ~{BOAT_PROFILE.cruiseKn} kn
+          </span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function RangeCell({
+  label,
+  value,
+  unit,
+  sub,
+}: {
+  label: string
+  value: string
+  unit?: string
+  sub?: string
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
+      <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-2">
+        {label}
+      </div>
+      <div className="tabnum font-mono text-[22px] font-bold leading-none text-ink">
+        {value}
+        {unit && <span className="ml-0.5 font-sans text-[11px] font-medium text-ink-2">{unit}</span>}
+      </div>
+      {sub && <div className="tabnum mt-1 font-mono text-[10px] text-ink-3">{sub}</div>}
+    </div>
+  )
+}
+
+/* ----------------------------- Wartung / Service ----------------------------- */
+
+function MaintenancePanel({ report }: { report: MaintenanceReport }) {
+  const [open, setOpen] = useState(false)
+  const summary = maintenanceSummary(report.items)
+  const headColor = summary.due > 0 ? 'var(--danger)' : summary.soon > 0 ? '#E8930C' : 'var(--good)'
+
+  // Kurzstatus für den Header.
+  const badge =
+    report.serviceYear === null
+      ? 'keine Daten'
+      : summary.due > 0
+        ? `${summary.due} fällig`
+        : summary.soon > 0
+          ? `${summary.soon} bald`
+          : 'alles ok'
+
+  return (
+    <div className="mb-[22px] overflow-hidden rounded-2xl border border-line bg-surface-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
+      >
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: headColor }} />
+        <span className="flex-1">
+          <span className="block text-[13px] font-bold text-ink">Wartung &amp; Service</span>
+          <span className="block text-[10px] text-ink-2">
+            {BOAT_PROFILE.engine} · {BOAT_PROFILE.year}
+          </span>
+        </span>
+        <span className="tabnum font-mono text-[11px] font-bold" style={{ color: headColor }}>
+          {badge}
+        </span>
+        <span className={`text-[11px] text-ink-3 transition-transform ${open ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-t border-line px-3.5 pb-3.5 pt-3">
+          {report.serviceYear === null ? (
+            <p className="py-3 text-center text-[12px] text-ink-3">
+              Noch keine Einträge – sobald die Saison startet, wird der Service abgeleitet.
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-[11px] leading-snug text-ink-2">
+                Letzter Service angenommen beim Saisonstart{' '}
+                <b className="tabnum font-mono text-ink">{report.serviceDate}</b>
+                {report.serviceHours !== null && (
+                  <>
+                    {' '}
+                    bei <b className="tabnum font-mono text-ink">{fmt(report.serviceHours, 0)} h</b>
+                  </>
+                )}
+                . Aktuell{' '}
+                <b className="tabnum font-mono text-ink">{fmt(report.currentHours, 0)} h</b>.
+                {report.newSeasonPending && (
+                  <span className="text-[#E8930C]"> · Neue Saison – Service vor erstem Start fällig.</span>
+                )}
+              </p>
+              <div className="flex flex-col gap-px overflow-hidden rounded-xl border border-line bg-line">
+                {report.items.map((it) => (
+                  <MaintRow key={it.key} item={it} />
+                ))}
+              </div>
+              <p className="mt-2.5 text-[10px] leading-snug text-ink-3">
+                Richtwerte Volvo Penta Benzin-Z-Antrieb (Süsswasser, jährlicher Winterlager-Service).
+                Ohne Gewähr – offizielles Wartungsmanual massgeblich.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MaintRow({ item }: { item: MaintenanceResult }) {
+  const color = STATUS_COLOR[item.status]
+
+  // Rechte Spalte: knappster aussagekräftiger Hinweis.
+  let detail = ''
+  if (item.status === 'due') {
+    detail = item.dueInHours !== null && item.dueInHours < 0 ? `${fmt(-item.dueInHours, 0)} h drüber` : 'fällig'
+  } else if (item.dueInHours !== null) {
+    detail = `noch ${fmt(item.dueInHours, 0)} h`
+  } else if (item.intervalMonths !== null) {
+    detail = `alle ${item.intervalMonths} Mt.`
+  }
+
+  return (
+    <div className="flex items-center gap-3 bg-surface px-3 py-2.5">
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[12px] font-semibold text-ink">{item.label}</span>
+        {item.note && <span className="block truncate text-[10px] text-ink-3">{item.note}</span>}
+      </span>
+      <span className="shrink-0 text-right">
+        <span
+          className="tabnum block font-mono text-[10px] font-bold uppercase tracking-wide"
+          style={{ color }}
+        >
+          {STATUS_LABEL[item.status]}
+        </span>
+        {detail && <span className="tabnum block font-mono text-[10px] text-ink-3">{detail}</span>}
+      </span>
     </div>
   )
 }
