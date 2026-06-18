@@ -2,13 +2,18 @@
 
 WICHTIG: Logbuch/CRUD/Dashboard (§1–§11) sind umgesetzt. v3 ergänzt das Feature
 **„Vor der Abfahrt"** (Live-Wetter/Pegel/Wassertemperatur, §14), die **History-Modals**
-(§14) und die **PWA**-Fähigkeit (§15). v4 ergänzt die **interaktive Seekarte + GPS-Tacho**
-(§16). Backend (Code.gs v2, CRUD) unverändert.
+(§14) und die **PWA**-Fähigkeit (§15). v4 ergänzt die **interaktive Seekarte** (§16) mit
+weit mehr als nur GPS-Tacho: OSM/OpenSeaMap-Kacheln, kuratierte Boots-POIs über den ganzen
+Lago Maggiore, **Fahrtaufzeichnung → Logbuch**, **Wasser-Distanzmessung** (Routing auf dem
+See), **Wetter/Wind für den ganzen See** (auch im Wetter-Tab, §14) und **See-Regeln/Zonen**
+(150-m-Uferband, Naturschutz). Kopfzeile/Bottom-Nav sind bereichsabhängig (§7). Backend
+(Code.gs v2, CRUD) unverändert.
 
 ## 1. Ziel
 Mobile-first Logbuch für ein Motorboot in **Ascona, Lago Maggiore**. Nutzung am
 Steuerstand auf dem Smartphone. Alle Daten in einer Google-Tabelle, Zugriff über eine
-bestehende Apps-Script-Web-App. Volles CRUD. (Bootsname: noch offen → Platzhalter in der Topbar.)
+bestehende Apps-Script-Web-App. Volles CRUD. (Bootsname = Platzhalter „Regal" in der Topbar,
+zentral in `src/components/Topbar.tsx` änderbar.)
 
 ## 2. Architektur (verbindlich)
 Vite + React + TS + Tailwind, statisch auf GitHub Pages. API = Google Apps Script
@@ -17,6 +22,10 @@ Keine andere DB, kein Server, kein Firebase. **Keine Foto-Uploads** (vorerst).
 Installierbar als **PWA** (Manifest + Service Worker, §15). Live-Conditions (§14) kommen
 direkt von keylosen CORS-APIs (Open-Meteo, existenz.ch); die Wassertemperatur (Alplakes,
 kein CORS) läuft über einen separaten Apps-Script-Read-Proxy (`Code.proxy.gs`).
+**Einzige npm-Ausnahme von „keine neuen Deps": Leaflet** (Seekarte, §16); Karten-Kacheln
+(OSM/OpenSeaMap) und Wetter/Wind (Open-Meteo) sind keylos. POIs sind eine kuratierte,
+versionierte Liste im Code (kein Live-Fetch, §16) – die See-Geometrie (Seepolygon, §16) wird
+einmalig per Skript aus OSM gezogen und als Datei eingecheckt.
 
 ## 3. API-Vertrag (Backend ist fertig, nicht ändern)
 Antworten: `{ ok, data?, error? }`.
@@ -69,7 +78,8 @@ Einträge nach `date` aufsteigend sortieren, dann:
 2. **CRUD**: erfassen / bearbeiten / löschen.
 3. **Detailansicht**: alle Felder + Wetter (Temp, Wind kn + Richtung als Kompass, Lage) +
    berechnete Werte (Stunden, h seit Start, ≈ l/h).
-4. **Dashboard – DREI EBENEN** (siehe Mockup `bordbuch-dashboard-v2.html` als visuelle Vorlage):
+4. **Dashboard / Auswertung – DREI EBENEN** (Bottom-Nav-Tab heisst **„Bordbuch"**, Komponente
+   bleibt `DashboardScreen`; Mockup `bordbuch-dashboard-v2.html` als visuelle Vorlage):
    - **(a) Total** über alle Jahre: 4 Instrument-Kacheln – Gesamt-Betriebsstunden,
      Ø Verbrauch l/h (exakt, OHNE "≈"), Treibstoffkosten CHF, Anzahl Einträge.
    - **(b) Ø pro Jahr**: Ø Stunden/Jahr, Ø Einträge/Jahr, Ø Kosten/Jahr (kleine Box-Reihe).
@@ -78,11 +88,16 @@ Einträge nach `date` aufsteigend sortieren, dann:
    - **(d) Einzeljahr im Detail**: Jahr per Chips/Balken wählbar → Betriebsstunden
      (+Δ gegenüber Ø), Einträge, Liter, CHF, ≈ l/h, CHF/h.
 5. Status klar: Spinner, Toast bei Erfolg/Fehler.
-6. **Vor der Abfahrt (Wetter)** – Live-Conditions für Locarno (Details §14). Das ist
-   der **Start-Screen** der App (erster Tab in der Bottom-Nav, Kompass-Icon).
+6. **Vor der Abfahrt (Wetter)** – Live-Conditions für Locarno + seeweiter Wetterbericht
+   mit Stunden-/Tagesprognose (Details §14). Das ist der **Start-Screen** der App (erster
+   Tab in der Bottom-Nav, Kompass-Icon).
+7. **Seekarte (Karte)** – interaktive Karte des ganzen Lago Maggiore: kuratierte Boots-POIs,
+   GPS-Tacho + Fahrtaufzeichnung (→ Logbuch-Eintrag vorbefüllen), Wasser-Distanzmessung,
+   Wetter/Wind über den ganzen See und See-Regeln/Zonen (Details §16).
 
 UX-Detail: Neuer Eintrag → `harborFrom` mit "Ascona, Porto Patriziale" vorbefüllen,
-`engineHours` mit dem letzten (höchsten) Zählerstand als Vorschlag.
+`engineHours` mit dem letzten (höchsten) Zählerstand als Vorschlag. Eine auf der Karte
+aufgezeichnete Fahrt füllt zusätzlich Von/Nach (nächster Hafen) + Eckdaten in die Notizen.
 
 ## 7. UX / Design
 Beibehalten: Chartplotter-/Instrument-Optik, Tag/Nacht (mit Persistenz, prefers-color-scheme
@@ -132,7 +147,11 @@ Nur Sheets, keine Fotos (vorerst), ein Boot. Token im Frontend bewusst akzeptier
 ## 12. Backlog
 Foto-Upload via Drive (Stundenzähler + Beleg), PDF-Export, Login-Härtung,
 Pegel-Jahresvergleich (`level-year` via existenz InfluxDB, optional).
-Erledigt: Offline-Cache (jetzt via PWA-Service-Worker, §15).
+Seekarte-Feinschliff (alle optional): `shop`-POIs noch leer; Werften/Winterlager als eigene
+Kategorie (falls „Lagerplätze" so gemeint); Wasser-Routing feiner (200-m-Gitter, Inseln nicht
+als Hindernis); exakte 150-m-Offset-Geometrie statt Näherung.
+Erledigt: Offline-Cache (PWA-Service-Worker, §15); interaktive Seekarte mit allem Drum und
+Dran (§16); seeweiter Wetterbericht (§14).
 
 ## 13. Sicherheit
 .env nie committen, echte Werte nur in .env (lokal) + GitHub Secrets.
@@ -162,6 +181,13 @@ keine Chart-Lib): Kacheln sind antippbar und öffnen je ein Liniendiagramm.
 - Seepegel: 30-Tage-Linie + Hochwasser-Referenzlinie + „Abstand zur Hochwassergrenze".
 - Wassertemp: Jahresvergleich (aktuelles Jahr hervorgehoben + Vorjahre je eigene Farbe)
   + Jahres-Höchstwert-Marker.
+
+**Seeweiter Wetterbericht (v4):** Abschnitt „Wetter & Wind · ganzer See" über die
+wiederverwendbare Komponente `src/components/WeatherReport.tsx` (dieselbe wie im Karten-Modal,
+§16). Datenquellen in `liveData.ts`: `fetchLakeConditions()` (6 Punkte Locarno…Stresa in EINER
+Open-Meteo-Anfrage, komma-getrennte Koordinaten → Array) und `fetchLakeForecast()` (Stunden-/
+Tagesprognose für einen Punkt in Seemitte). `weatherEmoji()` mappt WMO-Codes auf Emojis. Im
+Wetter-Tab lädt die Komponente selbst (kein Wind-Toggle, der ist karten­spezifisch).
 
 **Proxy `Code.proxy.gs`** (separates Apps Script „Bordbuch Wassertemp", read-only,
 serverseitige Tagesaggregate + Cache). `?type=`-Zweige: `watertemp` (Einzelwert),

@@ -2,13 +2,24 @@
 
 Mobile-first Logbuch-App für ein Motorboot in **Ascona, Lago Maggiore**, Bedienung am
 Steuerstand. Alle Daten liegen in einer Google-Tabelle; der Zugriff läuft über eine
-bestehende Google-Apps-Script-Web-App. Volles CRUD, 3-stufiges Dashboard, Tag-/Nacht-Modus.
+bestehende Google-Apps-Script-Web-App. Volles CRUD, mehrstufige Auswertung (Tab „Bordbuch"),
+Tag-/Nacht-Modus.
 
-Dazu **„Vor der Abfahrt"** (Start-Tab): Live-Wind/Böen mit Ampel, Seepegel und
-Wassertemperatur für Locarno, mit antippbaren Verlaufs-Diagrammen (Wind ±48 h,
-Pegel 30 Tage, Wassertemp-Jahresvergleich). Installierbar als **PWA**.
+Die App hat vier Bereiche (Bottom-Nav): **Wetter · Karte · Bordbuch · Logbuch** (+ „Neu").
 
-**Stack:** Vite · React · TypeScript · Tailwind CSS v4 · PWA · Deploy via GitHub Pages.
+- **Wetter** („Vor der Abfahrt"): Live-Wind/Böen mit Ampel, Seepegel und Wassertemperatur für
+  Locarno (mit antippbaren Verlaufs-Diagrammen) **plus** ein seeweiter Wetterbericht mit
+  Stunden-/Tagesprognose.
+- **Karte:** interaktive Seekarte des ganzen Lago Maggiore – kuratierte Boots-POIs (Häfen,
+  Tankstellen, Ankerplätze, Ausflugsziele …), GPS-Tacho + Fahrtaufzeichnung (→ Logbuch),
+  Distanzmessung **auf dem Wasser**, Wetter/Wind über den ganzen See und See-Regeln/Zonen.
+- **Bordbuch:** Auswertung (Total → Ø/Jahr → Pro-Jahr-Chart → Einzeljahr).
+- **Logbuch:** Liste, Detail und Erfassen/Bearbeiten der Fahrten.
+
+Installierbar als **PWA**.
+
+**Stack:** Vite · React · TypeScript · Tailwind CSS v4 · Leaflet (Karte) · PWA · Deploy via
+GitHub Pages. Karten-Kacheln (OpenStreetMap/OpenSeaMap) und Wetter (Open-Meteo) sind keylos.
 
 ---
 
