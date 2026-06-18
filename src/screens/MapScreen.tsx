@@ -754,25 +754,50 @@ function WeatherReport({
 /* ----------------------------- Teil-Komponenten ----------------------------- */
 
 function GeoHelp({ denied, onRetry, onClose }: { denied: boolean; onRetry: () => void; onClose: () => void }) {
+  const standalone =
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(display-mode: standalone)').matches ||
+      // iOS-Safari-PWA
+      (navigator as unknown as { standalone?: boolean }).standalone === true)
   return (
     <div className="text-[13px] leading-relaxed text-ink-2">
       {denied ? (
         <>
           <p className="mb-2 text-ink">
-            Der Standort ist für diese Seite <strong>blockiert</strong>. Das lässt sich nur in den
-            Browser-Einstellungen wieder freigeben:
+            Der Standort ist <strong>blockiert</strong>. Das Web kann ihn nicht selbst wieder
+            freischalten – du musst es einmal in den Einstellungen erlauben:
           </p>
-          <p className="mb-1 font-semibold text-ink">Android · Chrome</p>
-          <ol className="mb-3 list-decimal space-y-0.5 pl-5">
-            <li>Auf das <strong>Schloss-/Einstellungs-Symbol</strong> links neben der Adresse tippen.</li>
-            <li><strong>Berechtigungen</strong> → <strong>Standort</strong> → <strong>Zulassen</strong>.</li>
-            <li>Seite neu laden.</li>
-          </ol>
-          <p className="mb-1 font-semibold text-ink">iPhone · Safari</p>
-          <ol className="mb-3 list-decimal space-y-0.5 pl-5">
-            <li>iOS-<strong>Einstellungen</strong> → <strong>Safari</strong> → <strong>Standort</strong> → „Fragen" oder „Erlauben".</li>
-            <li>Zusätzlich: iOS-Einstellungen → <strong>Datenschutz → Ortungsdienste</strong> für Safari aktivieren.</li>
-          </ol>
+          {standalone ? (
+            <>
+              <p className="mb-1 font-semibold text-ink">Installierte App (Android)</p>
+              <ol className="mb-3 list-decimal space-y-0.5 pl-5">
+                <li>Android-<strong>Einstellungen</strong> → <strong>Apps</strong> → <strong>Bordbuch</strong>.</li>
+                <li><strong>Berechtigungen</strong> → <strong>Standort</strong> → <strong>Zulassen</strong> (bzw. „Bei App-Nutzung").</li>
+                <li>App schliessen und neu öffnen.</li>
+              </ol>
+              <p className="mb-3 text-ink-3">
+                Tipp: Lange auf das App-Icon → „App-Info" → Berechtigungen führt zum selben Ort.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mb-1 font-semibold text-ink">Android · Chrome</p>
+              <ol className="mb-3 list-decimal space-y-0.5 pl-5">
+                <li>Auf das <strong>Schloss-/Regler-Symbol</strong> links in der Adresszeile tippen.</li>
+                <li><strong>Berechtigungen</strong> → <strong>Standort</strong> → <strong>Zulassen</strong>.</li>
+                <li>(Fehlt es dort: Chrome-Menü ⋮ → <strong>Einstellungen → Website-Einstellungen → Standort</strong>.)</li>
+                <li>Seite neu laden.</li>
+              </ol>
+              <p className="mb-1 font-semibold text-ink">iPhone · Safari</p>
+              <ol className="mb-3 list-decimal space-y-0.5 pl-5">
+                <li>iOS-<strong>Einstellungen → Safari → Standort</strong> → „Fragen"/„Erlauben".</li>
+                <li>Zusätzlich: <strong>Datenschutz → Ortungsdienste</strong> für Safari aktivieren.</li>
+              </ol>
+            </>
+          )}
+          <p className="mb-3 text-ink-3">
+            Wichtig: Android-<strong>Ortung/GPS</strong> muss generell eingeschaltet sein.
+          </p>
           <button
             onClick={() => location.reload()}
             className="min-h-11 w-full rounded-xl bg-accent px-4 py-2.5 text-[13px] font-semibold text-white"

@@ -237,6 +237,9 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
 - **Layout:** Die Karte braucht feste Höhe → eigenes, padding-/scrollfreies `<main>` in
   `App.tsx` (`screen === 'map'` rendert full-bleed, unabhängig vom Einträge-Ladezustand).
   `ResizeObserver` ruft `map.invalidateSize()` (mobile URL-Leiste). Popups + Attribution
-  sind über CSS-Variablen an Tag/Nacht gekoppelt (`src/index.css`).
+  sind über CSS-Variablen an Tag/Nacht gekoppelt (`src/index.css`). Karten-Overlays liegen auf
+  `z-[900]`/`z-[1000]` → der `Modal` (Wetter/Standort-Hilfe) muss DARÜBER liegen: `z-[1200]`
+  (sonst überlagern Tacho/Buttons das Modal inkl. ✕). Standort-Hilfe erkennt installierte PWA
+  (`display-mode: standalone`) und zeigt dann die App-Berechtigungs-Anleitung statt der Schloss-Symbol-Variante.
 - **SW/Caching:** Kartenkacheln sind Fremd-Origin → der Service-Worker fängt sie nicht ab
   (direkt ans Netz), wie bei den übrigen Live-Daten.
