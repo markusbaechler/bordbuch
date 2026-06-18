@@ -283,12 +283,13 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
 
 ## 17. Boot-Profil, Tank-/Restreichweite & Wartung (v5)
 Im Bordbuch-Screen (`DashboardScreen`) zwei Betriebs-Blöcke – Logik + Boot-Profil in
-`src/lib/boat.ts`, getestet in `src/lib/boat.test.ts`. **Reihenfolge (handlungsrelevant oben →
-Auswertung unten):** Wartung & Service → Tank & Reichweite → Jahr im Detail → Durchschnitt pro
-Jahr → Total. **Jahr-Selektor:** natives **Dropdown** („Jahr") neben dem Metrik-Umschalter
+`src/lib/boat.ts`, getestet in `src/lib/boat.test.ts`. **Reihenfolge:** Tank & Reichweite → Jahr im Detail → Durchschnitt pro
+Jahr → Total → **Wartung & Service (zuunterst, default eingeklappt** – seltener gebrauchtes
+Werkzeug). **Jahr-Selektor:** natives **Dropdown** („Jahr") neben dem Metrik-Umschalter
 (intuitiver als Balken-Antippen, OS-Picker auf Mobile); der Pro-Jahr-Balkenchart visualisiert
 nur noch und hebt das gewählte Jahr hervor (Balken bleiben als Bonus antippbar). KEINE
-Jahres-Chip-Reihe mehr (sparte zu viel Platz).
+Jahres-Chip-Reihe mehr. **Auch das Logbuch (`ListScreen`) nutzt dasselbe Jahr-Dropdown** statt
+der früheren Chip-Reihe.
 
 - **Boot-Profil** `BOAT_PROFILE` (zentrale Single Source, auch von `Topbar` genutzt):
   Regal 2750 Cuddy, Volvo Penta, Bj. 2007, Tank **290 l**, Annahme-Marschfahrt `cruiseKn = 18`
@@ -300,8 +301,8 @@ Jahres-Chip-Reihe mehr (sparte zu viel Platz).
   `fuelLiters>0`) geschätzter Verbrauch von 290 l abgezogen → Restliter/-stunden + Füllstands­-
   balken (grün>50 %, amber 20–50 %, rot<20 %). **Annahme: zuletzt voll getankt**, klar
   ausgewiesen. Ohne Ø-Verbrauch/Tankstopp gibt es nur den statischen Wert.
-- **Wartung & Service** (zuoberst, aufklappbar, default OFFEN; `maintenanceReport(entries, today,
-  overrides)`): Je Position ist das „zuletzt erledigt"-Datum **manuell auf MM.JJ setzbar**
+- **Wartung & Service** (zuunterst, aufklappbar, default EINGEKLAPPT; `maintenanceReport(entries,
+  today, overrides)`): Je Position ist das „zuletzt erledigt"-Datum **manuell auf MM.JJ setzbar**
   (`<input type="month">`, „✎ ändern" / „Auto"-Reset) – nötig, weil NICHT alles jährlich gemacht
   wird (Impeller ~2 J., Zündkerzen ~3 J.). Overrides liegen in **localStorage**
   (`useMaintenanceLog`, Key `bordbuch-maintenance-v1`, `key → "YYYY-MM"`); KEIN Backend (Sheet

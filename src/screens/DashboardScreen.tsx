@@ -62,14 +62,10 @@ export function DashboardScreen({ entries }: { entries: Entry[] }) {
 
   const detail = years.find((y) => y.year === activeYear) ?? null
 
-  // Reihenfolge: handlungsrelevant oben (Wartung → Tank), Auswertung von speziell
-  // (Jahr) zu allgemein (Ø/Jahr → Total) darunter.
+  // Reihenfolge: Tank/Reichweite oben, Auswertung von speziell (Jahr) zu allgemein
+  // (Ø/Jahr → Total), Wartung als seltener gebrauchtes Werkzeug zuunterst (eingeklappt).
   return (
     <div>
-      {/* WARTUNG / SERVICE – zuoberst, manuell editierbar */}
-      <Eyebrow>Wartung &amp; Service</Eyebrow>
-      <MaintenancePanel report={maint} overrides={overrides} onSet={setOverride} />
-
       {/* TANK & REICHWEITE */}
       <Eyebrow>Tank &amp; Reichweite</Eyebrow>
       <TankPanel range={range} />
@@ -146,6 +142,10 @@ export function DashboardScreen({ entries }: { entries: Entry[] }) {
           </div>
         </>
       )}
+
+      {/* WARTUNG / SERVICE – zuunterst, default eingeklappt */}
+      <Eyebrow>Wartung &amp; Service</Eyebrow>
+      <MaintenancePanel report={maint} overrides={overrides} onSet={setOverride} />
     </div>
   )
 }
@@ -442,7 +442,7 @@ function MaintenancePanel({
   overrides: MaintOverrides
   onSet: (key: string, value: string | null) => void
 }) {
-  const [open, setOpen] = useState(true) // zuoberst & handlungsrelevant → offen
+  const [open, setOpen] = useState(false) // zuunterst → default eingeklappt
   const summary = maintenanceSummary(report.items)
   const headColor = summary.due > 0 ? 'var(--danger)' : summary.soon > 0 ? '#E8930C' : 'var(--good)'
   const customCount = Object.keys(overrides).length

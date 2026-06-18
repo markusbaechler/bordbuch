@@ -21,7 +21,7 @@ export function ListScreen({
   const [query, setQuery] = useState('')
   const [year, setYear] = useState<number | 'all'>('all')
 
-  // Distinkte Jahre (absteigend) für die Filter-Chips.
+  // Distinkte Jahre (absteigend) für den Jahr-Filter.
   const years = useMemo(() => {
     const set = new Set<number>()
     for (const e of entries) {
@@ -58,11 +58,28 @@ export function ListScreen({
         />
       </label>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <YearChip label="Alle" on={year === 'all'} onClick={() => setYear('all')} />
-        {years.map((y) => (
-          <YearChip key={y} label={String(y)} on={year === y} onClick={() => setYear(y)} />
-        ))}
+      <div className="mb-4 flex items-center gap-2">
+        <label className="flex items-center gap-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-2">
+            Jahr
+          </span>
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+            aria-label="Nach Jahr filtern"
+            className="tabnum min-h-9 rounded-full border border-line bg-surface px-3 py-1.5 font-mono text-[13px] font-bold text-ink"
+          >
+            <option value="all">Alle</option>
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="tabnum font-mono text-[11px] text-ink-3">
+          {visible.length} {visible.length === 1 ? 'Eintrag' : 'Einträge'}
+        </span>
       </div>
 
       {visible.length === 0 ? (
@@ -81,20 +98,6 @@ export function ListScreen({
         ))
       )}
     </div>
-  )
-}
-
-function YearChip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={on}
-      className={`min-h-11 rounded-full border px-4 py-2.5 text-xs font-semibold whitespace-nowrap ${
-        on ? 'border-ink bg-ink text-surface' : 'border-line bg-surface text-ink-2'
-      }`}
-    >
-      {label}
-    </button>
   )
 }
 
