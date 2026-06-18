@@ -187,13 +187,15 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
   Attribution-Control (Pflicht).
 - **POIs: kuratierte, feste Liste** in `src/lib/mapData.ts` (`CURATED_POIS`), KEIN Live-Fetch
   mehr. Die frühere Overpass-Abfrage lieferte zu viel Clutter (hunderte Restaurants, jeder
-  Adler der Falconeria als „attraction") → kein Mehrwert ggü. Google Maps. Stattdessen ~22
-  hand­verlesene boots-relevante Ziele im nördlichen Becken (Locarno/Gambarogno bis Brissago/
-  Cannobio/Cannero), Koordinaten aus OSM gezogen. Kategorien (`CategoryKey`): `harbor`,
-  `anchor`, `fuel`, `food`, `shop`, `sights` – Marker = `L.divIcon` mit Emoji+Farbe.
-  `ACTIVE_CATEGORIES` blendet leere Kategorien aus den Filter-Chips aus (aktuell ohne
-  `anchor`/`fuel`/`shop` – für die gibt es in OSM keine verlässlichen Daten, kommt mit
-  recherchierten Geodaten nach).
+  Adler der Falconeria als „attraction") → kein Mehrwert ggü. Google Maps. Stattdessen
+  handverlesene boots-relevante Ziele über den ganzen Lago Maggiore (Nordbecken dichter,
+  Heimatrevier; italienische Seite bis Arona). Kategorien (`CategoryKey`): `harbor`, `anchor`,
+  `fuel`, `food`, `shop`, `sights` – Marker = `L.divIcon` mit Emoji+Farbe. `ACTIVE_CATEGORIES`
+  blendet leere Kategorien aus den Filter-Chips (aktuell nur `shop` leer).
+- **Halb-automatische Kuration:** `node scripts/fetch-poi-candidates.mjs` holt Kandidaten
+  (Bootstankstellen, Häfen, Liege-/Ankerplätze) aus OSM/Overpass über den ganzen See (Lago di
+  Lugano per Orts-Liste ausgefiltert) und gibt fertige `mapData`-Zeilen aus → sichten und in
+  die passende `mk(...)`-Liste einfügen. Bewusst kein Auto-Write: die Liste bleibt kuratiert.
 - **Links im Popup:** `website` → klickbarer „🌐 Website"-Link (auf `http(s)://` normalisiert,
   `target=_blank rel=noopener noreferrer`); `phone` → „☎ …" als `tel:`-Link.
 - **Fahrtaufzeichnung → Logbuch:** Hook `src/hooks/useTripRecorder.ts` sammelt aus den

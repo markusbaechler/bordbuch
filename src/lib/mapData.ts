@@ -60,23 +60,47 @@ function mk(category: CategoryKey, defs: PoiDef[]): Poi[] {
   }))
 }
 
-// Häfen / Marinas / Anlegestellen (boots-relevant, von Ascona aus erreichbar).
+// Häfen / Marinas / Anlegestellen über den ganzen Lago Maggiore (Nordbecken dichter,
+// weil Heimatrevier). Erweitert/gepflegt halb-automatisch via
+// `scripts/fetch-poi-candidates.mjs` (Overpass → Kandidaten sichten → hier einfügen).
 const HARBORS = mk('harbor', [
-  ['Porto Patriziale Ascona', 46.14667, 8.79324, 'Heimathafen', 'https://www.portoascona.ch/'],
-  ['Porto Regionale di Locarno', 46.16625, 8.80447, 'Locarno', 'http://www.portolocarno.com'],
-  ['Porto Muralto', 46.1712, 8.80301, 'Muralto / Locarno'],
+  // --- Schweizer Nordbecken ---
   ['Porto Minusio', 46.17802, 8.84036, 'Minusio'],
+  ['Porto Muralto', 46.1712, 8.80301, 'Muralto / Locarno'],
   ['Porto Campofelice', 46.16636, 8.85518, 'Tenero'],
-  ['Centro Nautico Di Domenico', 46.15595, 8.80382, 'Bootscenter', 'https://www.didomenico.ch/'],
+  ['Porto Regionale di Locarno', 46.16625, 8.80447, 'Locarno', 'http://www.portolocarno.com'],
+  ['Centro Nautico Di Domenico', 46.15595, 8.80382, 'Bootscenter Locarno', 'https://www.didomenico.ch/'],
   ['Marina Magadino', 46.14914, 8.85873, 'Gambarogno'],
+  ['Porto Patriziale Ascona', 46.14667, 8.79324, 'Heimathafen', 'https://www.portoascona.ch/'],
+  ['Porto Apona', 46.13411, 8.72018, 'Brissago'],
   ['Porto Gambarogno', 46.12867, 8.7964, 'Gambarogno'],
   ['Porto Ticino Brissago', 46.12284, 8.71477, 'Brissago', 'https://www.yachtsport-resort.com/'],
   ['Porto alla Resiga', 46.12243, 8.71391, 'Brissago'],
   ['Porto Vecchio Brissago', 46.11807, 8.71046, 'Brissago'],
+  // --- Italienische Seite (Ostufer, Nord → Süd) ---
   ['Porto Turistico di Cannobio', 46.06261, 8.70041, 'Cannobio (IT)'],
+  ['Porto della Gabella', 46.04534, 8.73346, 'Maccagno (IT)', 'https://www.portolago.com/SpondaLombarda/Maccagno/Porti/PortoDellaGabella.htm'],
+  ['Porto della Madonnina', 46.03628, 8.74204, 'Maccagno (IT)', 'https://www.portolago.com/SpondaLombarda/Maccagno/Porti/DescrizionePorto.html'],
+  ['Porto di Colmegna', 46.02523, 8.75081, 'Luino (IT)'],
   ['Porto comunale Cannero Riviera', 46.0227, 8.68629, 'Cannero (IT)'],
   ['Porto Portobello', 46.01912, 8.68329, 'Cannero (IT)', 'https://www.nauticabego.com/'],
+  ['Porto Marinestar', 45.99722, 8.73211, 'Luino (IT)', 'http://www.marinestar.it'],
+  ['Nuovo porto turistico Porto Valtravaglia', 45.96145, 8.67954, 'Porto Valtravaglia (IT)', 'https://www.portolago.com/SpondaLombarda/PortoValtravaglia/Porti/DescrizionePorto.html'],
+  ['Porto comunale Caldè', 45.94621, 8.66136, 'Castelveccana (IT)', 'https://www.portolago.com/SpondaLombarda/Calde-Castelveccana/Porti/DescrizionePorto.html'],
+  ['Marina Portolabieno', 45.91251, 8.6156, 'Laveno (IT)', 'http://www.portolabieno.com'],
+  ['Porto comunale Laveno Mombello', 45.9098, 8.61893, 'Laveno (IT)', 'https://portolago.com/SpondaLombarda/Laveno/Porti/DescrizionePorti.htm'],
+  ['Porto di Cerro', 45.89825, 8.59603, 'Cerro (IT)'],
+  ['Porto di Ranco', 45.79748, 8.5683, 'Ranco (IT)', 'https://www.autoritadibacino.va.it/'],
+  ['Angera – Porto Austriaco', 45.77094, 8.5734, 'Angera (IT)'],
+  // --- Italienische Seite (Westufer / Piemont, Nord → Süd) ---
   ['Oggebbio Marina', 45.99094, 8.64856, 'Oggebbio (IT)'],
+  ['Porto comunale Ghiffa', 45.9572, 8.61852, 'Ghiffa (IT)', 'https://portolago.com/SpondaPiemontese/Ghiffa/Porti/DescrizionePorto.html'],
+  ['Porto comunale Verbania Intra', 45.93443, 8.57413, 'Verbania (IT)', 'https://portolago.com/SpondaPiemontese/Intra/Porti/DescrizionePorto.html'],
+  ['Porto turistico Feriolo', 45.92821, 8.48125, 'Baveno (IT)', 'https://portolago.com/SpondaPiemontese/Feriolo/Porti/PontiliGalleggianti.html'],
+  ['Porto comunale San Dazio', 45.92058, 8.55356, 'Pallanza (IT)', 'https://portolago.com/SpondaPiemontese/Pallanza/Porti/DescrizionePorto.html'],
+  ['Nuovo Porto di Stresa', 45.88365, 8.54349, 'Stresa (IT)', 'https://www.portolago.com/SpondaPiemontese/Stresa/Porti/DescrizionePorti.htm'],
+  ['Porto Comunale Belgirate', 45.84253, 8.57348, 'Belgirate (IT)'],
+  ['Motonautica Verbano', 45.74757, 8.56646, 'Arona (IT)'],
 ])
 
 // Ausflugsziele, die man per Boot ansteuert.
@@ -94,10 +118,25 @@ const FOOD = mk('food', [
   ['Shaka Beach', 46.14289, 8.83831, 'Beach-Bar Tenero'],
 ])
 
-// Kuratierte Gesamtliste. Ankerplätze/Tankstellen bewusst (noch) leer – siehe README:
-// für das Nordbecken gibt es in OSM keine verlässlich verorteten Boots-Tankstellen
-// oder offiziellen Ankerfelder; das kommt mit recherchierten Daten nach.
-export const CURATED_POIS: Poi[] = [...HARBORS, ...SIGHTS, ...FOOD]
+// Bootstankstellen (auf dem See rar). Quelle: OSM (`waterway=fuel`/`seamark`),
+// via `scripts/fetch-poi-candidates.mjs`. Namenlose OSM-Punkte sind nach Ort benannt.
+const FUEL = mk('fuel', [
+  ['Bootstankstelle Tenero', 46.16653, 8.85582, 'Tenero / Gambarogno'],
+  ['Bootstankstelle Porto Valtravaglia', 45.96115, 8.67939, 'Porto Valtravaglia (IT)'],
+  ['Tankstelle Cantiere Donato', 45.94693, 8.66071, 'Caldè (IT)', 'http://www.cantierenauticodonato.it/'],
+  ['Nautica Bego – Tankstelle', 45.92865, 8.56905, 'Verbania (IT)', 'https://www.nauticabego.com/'],
+  ['Bootstankstelle Feriolo', 45.9249, 8.48834, 'Baveno (IT)', 'https://portolago.com/SpondaPiemontese/Feriolo/HPFeriolo.htm'],
+  ['Bootstankstelle Taroni', 45.89028, 8.52208, 'Stresa (IT)'],
+])
+
+// Anker-/Bojenfelder. In OSM für den See nur dünn erfasst (`seamark:type`).
+const ANCHOR = mk('anchor', [
+  ['Bojen-/Ankerfeld Locarno', 46.17105, 8.80479, 'beim Porto Locarno'],
+  ['Ankerplatz Cannero', 46.02427, 8.70664, 'bei den Castelli di Cannero'],
+])
+
+// Kuratierte Gesamtliste.
+export const CURATED_POIS: Poi[] = [...HARBORS, ...ANCHOR, ...FUEL, ...SIGHTS, ...FOOD]
 
 // Kategorien, die tatsächlich POIs enthalten (für die Filter-Chips).
 export const ACTIVE_CATEGORIES: Category[] = CATEGORIES.filter((c) =>

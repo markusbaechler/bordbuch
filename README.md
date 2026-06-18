@@ -147,11 +147,15 @@ Der Tab **„Karte"** zeigt eine interaktive Seekarte für den nördlichen Lago 
 
 - **Kacheln:** OpenStreetMap als Basis, darüber das halbtransparente
   OpenSeaMap-Seezeichen-Overlay (Tonnen, Untiefen, Fährlinien).
-- **POIs:** eine **kuratierte, feste Liste** boots-relevanter Ziele im nördlichen Becken
-  (Häfen/Anlegestellen, Ausflugsziele wie die Isole di Brissago oder die Castelli di Cannero,
-  Strandbäder), filterbar nach Kategorie. Bewusst keine Live-OSM-Abfrage mehr: die lieferte
-  vor allem Clutter (hunderte Restaurants, jede Statue) und damit keinen Mehrwert gegenüber
-  Google Maps. Wo bekannt, zeigt das Popup einen klickbaren **Website-/Telefon-Link**.
+- **POIs:** eine **kuratierte, feste Liste** boots-relevanter Ziele über den ganzen Lago
+  Maggiore – Häfen/Anlegestellen (auch italienische Seite bis Arona), Bootstankstellen,
+  Anker-/Bojenfelder, Ausflugsziele (Isole di Brissago, Castelli di Cannero) und Strandbäder,
+  filterbar nach Kategorie. Bewusst keine Live-OSM-Abfrage mehr: die lieferte vor allem Clutter
+  (hunderte Restaurants, jede Statue) und keinen Mehrwert gegenüber Google Maps. Wo bekannt,
+  zeigt das Popup einen klickbaren **Website-/Telefon-Link**.
+  - **Liste ergänzen (halb-automatisch):** `node scripts/fetch-poi-candidates.mjs` holt
+    Kandidaten (Tankstellen, Häfen, Liege-/Ankerplätze) aus OpenStreetMap und gibt sie als
+    fertige Code-Zeilen aus – sichten und in `src/lib/mapData.ts` einfügen.
 - **GPS-Tacho:** Bei freigegebenem Standort zeigt ein Overlay die aktuelle Geschwindigkeit
   in **km/h und Knoten**; die eigene Position erscheint als Marker.
 - **Fahrtaufzeichnung → Logbuch:** „Fahrt aufzeichnen" zeichnet den GPS-Track auf und zeigt

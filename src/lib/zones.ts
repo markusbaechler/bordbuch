@@ -54,7 +54,7 @@ export const ZONES: Zone[] = [
 
 // Kurz-Regeln für die Legende (ohne Gewähr).
 export const LAKE_RULES: string[] = [
-  'Uferzone 300 m: langsame Fahrt, kein Wasserski/Wakeboard.',
+  'Uferzone 150 m: max. 10 km/h, kein Wasserski/Wakeboard.',
   'Bolle di Magadino: Naturschutz – Fahrverbot bzw. Einschränkung.',
   'Angaben ohne Gewähr – offizielle Schifffahrtskarten massgeblich.',
 ]
