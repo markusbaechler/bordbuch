@@ -223,13 +223,17 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
   kein Wasserweg. `measuringRef` wird in `toggleMeasure` **synchron** gesetzt (Tap direkt danach
   greift). Seepolygon erzeugt via `scripts/fetch-lake.mjs` (OSM Relation 11758, ~470 Punkte).
 - **Wetter & Wind über den ganzen See:** `fetchLakeConditions()` (`liveData.ts`) holt in EINER
-  Open-Meteo-Anfrage 6 Punkte (Locarno…Stresa) mit Temp/Wettercode/Niederschlag/Wind. Badge
-  oben rechts = Conditions am nächsten Punkt zur GPS-Position (Emoji/Temp/Wind/Regen); Tippen
-  blendet das **Wind-Feld** ein (Pfeil-Marker je Punkt, `windIcon`).
-- **See-Regeln/Zonen (nur wenn aktiviert):** Button „See-Regeln" zeichnet die **Uferlinie**
-  (`LAKE_OUTLINE`, Bezug für die 150-m-Langsamfahrzone) + das No-Go-Polygon **Bolle di Magadino**
-  (`src/lib/zones.ts`, OSM way 160197486) und blendet die Legende (`LAKE_RULES`) ein. Default
-  aus → Karte bleibt sauber. **Bewusst „ohne Gewähr"**: Annäherungen, offizielle Karten massgeblich.
+  Open-Meteo-Anfrage 6 Punkte (Locarno…Stresa). Badge oben rechts = Conditions am nächsten Punkt
+  zur GPS-Position (Emoji/Temp/Wind/Regen) und **öffnet ein Wetter-Modal** (`WeatherReport`):
+  Jetzt-Tabelle aller 6 Punkte + **Stunden- und Tagesprognose** (`fetchLakeForecast()`,
+  repräsentativer Punkt Seemitte). Im Modal ein Toggle „Wind-Pfeile auf der Karte" → blendet das
+  **Wind-Feld** ein (`windIcon` je Punkt) inkl. **Legende** auf der Karte (Pfeil = Richtung, Zahl = kn).
+- **See-Regeln/Zonen (nur wenn aktiviert):** Button „See-Regeln" zeichnet die **Uferzone als 150-m-
+  Band**: `shoreZoneRing(150)` (`route.ts`) versetzt die Küstenlinie 150 m INS WASSER (Tangenten-
+  Normale, Richtung per `inLake`-Test; verifiziert Median 150 m), gefüllt als Polygon mit Loch
+  (`[LAKE_OUTLINE, inner]`) + 150-m-Grenzlinie. Dazu das No-Go-Polygon **Bolle di Magadino**
+  (`src/lib/zones.ts`, OSM way 160197486) + Legende (`LAKE_RULES`). Default aus → Karte sauber.
+  **Bewusst „ohne Gewähr"**: Annäherungen, offizielle Karten massgeblich.
 - **Layout:** Die Karte braucht feste Höhe → eigenes, padding-/scrollfreies `<main>` in
   `App.tsx` (`screen === 'map'` rendert full-bleed, unabhängig vom Einträge-Ladezustand).
   `ResizeObserver` ruft `map.invalidateSize()` (mobile URL-Leiste). Popups + Attribution

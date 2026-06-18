@@ -166,13 +166,14 @@ Der Tab **„Karte"** zeigt eine interaktive Seekarte für den nördlichen Lago 
   und pausiert bei ausgeschaltetem Bildschirm, um Akku zu sparen.
 - **Mess-/Planungstool (auf dem Wasser):** „Messen" antippen, dann zwei Punkte – der angezeigte
   Weg **folgt dem Wasser** (kein Geradeaus durch die Berge) und nennt **Distanz, Kurs und ETA**.
-- **Wetter & Wind über den ganzen See:** Ein Badge oben rechts zeigt **Wetter, Temperatur,
-  Regen und Wind** für deine Gegend; ein Tipp blendet das **Wind-Feld** an mehreren Punkten von
-  Locarno bis Stresa ein (Open-Meteo).
-- **See-Regeln & Zonen:** „See-Regeln" markiert die **Uferzone** (innerhalb 150 m Langsamfahrt)
-  entlang der Küstenlinie und das Naturschutzgebiet **Bolle di Magadino** als No-Go-Fläche und
-  blendet die wichtigsten Regeln ein. **Annäherungen ohne Gewähr** – massgeblich bleiben die
-  offiziellen Schifffahrtskarten.
+- **Wetter & Wind über den ganzen See:** Das Badge oben rechts zeigt **Wetter, Temperatur, Regen
+  und Wind** für deine Gegend und öffnet ein **Wetter-Modal** mit den aktuellen Werten an mehreren
+  Punkten (Locarno bis Stresa) sowie **Stunden- und Tagesprognose**. Dort lässt sich auch das
+  **Wind-Feld** (Pfeile mit Legende) auf der Karte einblenden (Open-Meteo).
+- **See-Regeln & Zonen:** „See-Regeln" markiert die **Uferzone** als 150-m-Band (innerhalb gilt
+  Langsamfahrt) und das Naturschutzgebiet **Bolle di Magadino** als No-Go-Fläche und blendet die
+  wichtigsten Regeln ein. **Annäherungen ohne Gewähr** – massgeblich bleiben die offiziellen
+  Schifffahrtskarten.
 
 Quellen-Attribution (© OpenStreetMap / © OpenSeaMap) wird in der Karte angezeigt. Es sind
 keine Keys oder zusätzliche Secrets nötig; die Standortfreigabe erfolgt im Browser.

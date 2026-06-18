@@ -36,6 +36,38 @@ export function inLake(lat: number, lon: number): boolean {
   return inside
 }
 
+/**
+ * Innerer Versatz der Uferlinie um `meters` ins Wasser – das ist die echte
+ * Grenze der Uferzone (z. B. 150 m), nicht die Küstenlinie selbst. Pro Punkt
+ * wird die Tangente (Nachbarpunkte) genommen, die Normale gebildet und der Punkt
+ * 150 m in DIE Richtung verschoben, die im See liegt (`inLake`-Test).
+ */
+const zoneCache = new Map<number, LL[]>()
+export function shoreZoneRing(meters: number): LL[] {
+  const cached = zoneCache.get(meters)
+  if (cached) return cached
+  const n = LAKE_OUTLINE.length
+  const out: LL[] = []
+  for (let i = 0; i < n; i++) {
+    const prev = LAKE_OUTLINE[(i - 1 + n) % n]
+    const cur = LAKE_OUTLINE[i]
+    const next = LAKE_OUTLINE[(i + 1) % n]
+    const mPerLon = 111000 * Math.cos((cur[0] * Math.PI) / 180)
+    const tx = (next[1] - prev[1]) * mPerLon // Tangente (Meter, x=Ost)
+    const ty = (next[0] - prev[0]) * 111000 //            (y=Nord)
+    const len = Math.hypot(tx, ty) || 1
+    const nx = -ty / len // Linke Normale
+    const ny = tx / len
+    const dLat = (ny * meters) / 111000
+    const dLon = (nx * meters) / mPerLon
+    const a: LL = [cur[0] + dLat, cur[1] + dLon]
+    const b: LL = [cur[0] - dLat, cur[1] - dLon]
+    out.push(inLake(a[0], a[1]) ? a : inLake(b[0], b[1]) ? b : a)
+  }
+  zoneCache.set(meters, out)
+  return out
+}
+
 // Gitterauflösung ~200 m (Längengrad-Schritt kürzer wegen cos(lat)).
 const D_LAT = 0.0018
 const D_LON = 0.0026

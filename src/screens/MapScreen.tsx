@@ -15,7 +15,7 @@ import 'leaflet/dist/leaflet.css'
 import { useGeoPosition, speedReadout } from '../hooks/useGeoPosition'
 import { useTripRecorder, fmtDistance, fmtDuration } from '../hooks/useTripRecorder'
 import { haversineM, bearingDeg, cardinal8, KM_TO_NM, MS_TO_KN } from '../lib/geo'
-import { routeOnWater } from '../lib/route'
+import { routeOnWater, shoreZoneRing } from '../lib/route'
 import { LAKE_OUTLINE } from '../lib/lake'
 import {
   ACTIVE_CATEGORIES,
@@ -27,7 +27,13 @@ import {
   type Poi,
 } from '../lib/mapData'
 import { ZONES, LAKE_RULES } from '../lib/zones'
-import { fetchLakeConditions, weatherEmoji, type LakeCondition } from '../lib/liveData'
+import {
+  fetchLakeConditions,
+  fetchLakeForecast,
+  weatherEmoji,
+  type LakeCondition,
+  type LakeForecast,
+} from '../lib/liveData'
 import { Modal } from '../components/Modal'
 import type { EntryDraft } from './FormScreen'
 
@@ -94,6 +100,7 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
   const [showRules, setShowRules] = useState(false)
   const [showWind, setShowWind] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
+  const [showWeather, setShowWeather] = useState(false)
   const [conditions, setConditions] = useState<LakeCondition[] | null>(null)
   const [permState, setPermState] = useState<PermState>('unknown')
   const [showGeoHelp, setShowGeoHelp] = useState(false)
@@ -211,10 +218,17 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
     if (!ready || !layer) return
     layer.clearLayers()
     if (!showRules) return
-    // Uferlinie = Bezug für die 150-m-Langsamfahrzone.
-    L.polyline(LAKE_OUTLINE, { color: '#0C7C82', weight: 2, opacity: 0.85, dashArray: '4 4' })
-      .bindPopup('<div class="poi-popup"><strong>Uferzone</strong><br><span class="poi-popup-sub">Innerhalb 150 m vom Ufer: max. 10 km/h, kein Wasserski.</span></div>')
+    // Uferzone: Band zwischen Küstenlinie und der 150-m-Linie (ins Wasser versetzt).
+    const inner = shoreZoneRing(150)
+    L.polygon([LAKE_OUTLINE, inner] as L.LatLngExpression[][], {
+      stroke: false,
+      fillColor: '#0C7C82',
+      fillOpacity: 0.16,
+    })
+      .bindPopup('<div class="poi-popup"><strong>Uferzone (150 m)</strong><br><span class="poi-popup-sub">Innerhalb 150 m vom Ufer: max. 10 km/h, kein Wasserski.</span></div>')
       .addTo(layer)
+    // Die 150-m-Grenzlinie selbst.
+    L.polyline(inner, { color: '#0C7C82', weight: 2, opacity: 0.9, dashArray: '5 4' }).addTo(layer)
     for (const z of ZONES) {
       L.polygon(z.polygon, {
         color: '#D8352A',
@@ -442,9 +456,8 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
 
         {nearCond && (
           <button
-            onClick={() => setShowWind((s) => !s)}
-            aria-pressed={showWind}
-            title="Wind über den ganzen See ein-/ausblenden"
+            onClick={() => setShowWeather(true)}
+            title="Wetter & Wind – ganzer See + Prognose"
             className={`pointer-events-auto flex items-center gap-2 rounded-xl border bg-surface/95 px-2.5 py-1.5 shadow-[var(--shadow)] backdrop-blur-sm ${
               showWind ? 'border-accent' : 'border-line'
             }`}
@@ -461,6 +474,16 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
           </button>
         )}
       </div>
+
+      {/* Wind-Feld-Legende (nur wenn eingeblendet) */}
+      {showWind && (
+        <div className="pointer-events-none absolute left-1/2 top-16 z-[900] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-line bg-surface/95 px-2.5 py-1 text-[10px] font-medium text-ink-2 shadow-[var(--shadow)] backdrop-blur-sm">
+          <svg width="12" height="12" viewBox="0 0 24 24">
+            <path d="M12 3 L12 21 M12 3 L8 9 M12 3 L16 9" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Wind: Pfeil = Richtung · Zahl = kn
+        </div>
+      )}
 
       {/* Fahrt-/Tacho-Panel (links, unter der oberen Leiste) */}
       <div className="absolute left-2 top-16 z-[900] w-[150px] rounded-2xl border border-line bg-surface/95 px-3 py-2.5 shadow-[var(--shadow)] backdrop-blur-sm">
@@ -592,6 +615,138 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
           <GeoHelp denied={denied} onRetry={requestGeo} onClose={() => setShowGeoHelp(false)} />
         </Modal>
       )}
+
+      {showWeather && (
+        <Modal title="Wetter & Wind · Lago Maggiore" onClose={() => setShowWeather(false)}>
+          <WeatherReport
+            conditions={conditions}
+            windOn={showWind}
+            onToggleWind={() => setShowWind((s) => !s)}
+          />
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+/* ----------------------------- Wetter-Modal ----------------------------- */
+
+function WeatherReport({
+  conditions,
+  windOn,
+  onToggleWind,
+}: {
+  conditions: LakeCondition[] | null
+  windOn: boolean
+  onToggleWind: () => void
+}) {
+  const [fc, setFc] = useState<LakeForecast | null>(null)
+  const [fcErr, setFcErr] = useState(false)
+  useEffect(() => {
+    let alive = true
+    fetchLakeForecast()
+      .then((f) => alive && setFc(f))
+      .catch(() => alive && setFcErr(true))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const hourFmt = (t: string) =>
+    new Date(t).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' })
+  const dayFmt = (t: string) =>
+    new Date(t).toLocaleDateString('de-CH', { weekday: 'short', day: '2-digit', month: '2-digit' })
+
+  return (
+    <div>
+      <button
+        onClick={onToggleWind}
+        className={`mb-3 w-full rounded-xl border px-3 py-2 text-[12px] font-semibold ${
+          windOn ? 'border-transparent bg-accent text-white' : 'border-line text-ink-2'
+        }`}
+      >
+        {windOn ? '✓ Wind-Pfeile auf der Karte' : 'Wind-Pfeile auf der Karte zeigen'}
+      </button>
+
+      {/* Jetzt · alle Punkte über den See */}
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">
+        Jetzt · ganzer See
+      </div>
+      <div className="mb-4 overflow-hidden rounded-xl border border-line">
+        {conditions?.length ? (
+          conditions.map((c, i) => (
+            <div
+              key={c.name}
+              className={`flex items-center justify-between gap-2 px-3 py-2 text-[13px] ${
+                i % 2 ? 'bg-surface-2' : ''
+              }`}
+            >
+              <span className="w-20 font-semibold text-ink">{c.name}</span>
+              <span className="text-[16px]">{weatherEmoji(c.weatherCode)}</span>
+              <span className="tabnum w-10 text-right font-mono text-ink">{c.tempC}°</span>
+              <span className="tabnum w-24 text-right font-mono text-ink-2">
+                {cardinal8(c.dirDeg)} {c.windKn}/{c.gustKn} kn
+              </span>
+              <span className="tabnum w-12 text-right font-mono text-teal">
+                {c.precipMm > 0 ? `${c.precipMm}mm` : '–'}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="px-3 py-3 text-[13px] text-ink-3">Conditions nicht verfügbar.</div>
+        )}
+      </div>
+      <p className="-mt-3 mb-4 text-[10px] text-ink-3">Wind = Mittel/Böen · letzte Spalte = Niederschlag</p>
+
+      {/* Stundenprognose */}
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">
+        Nächste Stunden
+      </div>
+      {fc?.hourly.length ? (
+        <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
+          {fc.hourly.map((h) => (
+            <div
+              key={h.time}
+              className="flex min-w-[52px] flex-col items-center gap-0.5 rounded-lg border border-line px-1.5 py-1.5"
+            >
+              <span className="tabnum font-mono text-[10px] text-ink-3">{hourFmt(h.time)}</span>
+              <span className="text-[15px]">{weatherEmoji(h.weatherCode)}</span>
+              <span className="tabnum font-mono text-[12px] font-bold text-ink">{h.tempC}°</span>
+              <span className="tabnum font-mono text-[9px] text-ink-2">{h.windKn}kn</span>
+              <span className="tabnum font-mono text-[9px] text-teal">{h.precipProb}%</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mb-4 text-[12px] text-ink-3">{fcErr ? 'Prognose nicht verfügbar.' : 'Lädt…'}</div>
+      )}
+
+      {/* Tagesprognose */}
+      {fc?.daily.length ? (
+        <>
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">Tage</div>
+          <div className="overflow-hidden rounded-xl border border-line">
+            {fc.daily.map((day, i) => (
+              <div
+                key={day.date}
+                className={`flex items-center justify-between gap-2 px-3 py-2 text-[13px] ${
+                  i % 2 ? 'bg-surface-2' : ''
+                }`}
+              >
+                <span className="w-24 font-semibold text-ink">{dayFmt(day.date)}</span>
+                <span className="text-[16px]">{weatherEmoji(day.weatherCode)}</span>
+                <span className="tabnum w-16 text-right font-mono text-ink">
+                  {day.tMax}°<span className="text-ink-3">/{day.tMin}°</span>
+                </span>
+                <span className="tabnum w-16 text-right font-mono text-ink-2">max {day.windMaxKn}kn</span>
+                <span className="tabnum w-10 text-right font-mono text-teal">{day.precipProb}%</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      <p className="mt-3 text-center text-[10px] text-ink-3">Quelle: Open-Meteo · Prognose für die Seemitte</p>
     </div>
   )
 }

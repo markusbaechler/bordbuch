@@ -245,6 +245,75 @@ export async function fetchLakeConditions(): Promise<LakeCondition[]> {
   }));
 }
 
+// Stunden-/Tagesprognose für den See (ein repräsentativer Punkt in Seemitte –
+// das Wetter variiert über den See nur wenig; die räumliche Verteilung deckt das
+// 6-Punkte-Snapshot von fetchLakeConditions ab).
+export interface ForecastHour {
+  time: string;
+  tempC: number;
+  precipProb: number;
+  weatherCode: number;
+  windKn: number;
+  gustKn: number;
+}
+export interface ForecastDay {
+  date: string;
+  weatherCode: number;
+  tMax: number;
+  tMin: number;
+  precipMm: number;
+  precipProb: number;
+  windMaxKn: number;
+  gustMaxKn: number;
+}
+export interface LakeForecast {
+  hourly: ForecastHour[];
+  daily: ForecastDay[];
+}
+
+export async function fetchLakeForecast(): Promise<LakeForecast> {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=46.05&longitude=8.72` +
+    `&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m` +
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max` +
+    `&forecast_days=3&wind_speed_unit=kn&timezone=auto`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
+  const d = await res.json();
+
+  // Stündlich ab „jetzt" die nächsten 12 h.
+  const times: string[] = d.hourly?.time ?? [];
+  const now = Date.now();
+  let start = times.findIndex((t) => new Date(t).getTime() >= now - 30 * 60 * 1000);
+  if (start < 0) start = 0;
+  const hourly: ForecastHour[] = times.slice(start, start + 12).map((t, k) => {
+    const i = start + k;
+    return {
+      time: t,
+      tempC: Math.round(d.hourly.temperature_2m[i]),
+      precipProb: d.hourly.precipitation_probability?.[i] ?? 0,
+      weatherCode: d.hourly.weather_code?.[i] ?? 0,
+      windKn: Math.round(d.hourly.wind_speed_10m?.[i] ?? 0),
+      gustKn: Math.round(d.hourly.wind_gusts_10m?.[i] ?? 0),
+    };
+  });
+
+  const dd = d.daily ?? {};
+  const daily: ForecastDay[] = (dd.time ?? []).map((date: string, i: number) => ({
+    date,
+    weatherCode: dd.weather_code?.[i] ?? 0,
+    tMax: Math.round(dd.temperature_2m_max?.[i] ?? 0),
+    tMin: Math.round(dd.temperature_2m_min?.[i] ?? 0),
+    precipMm: dd.precipitation_sum?.[i] ?? 0,
+    precipProb: dd.precipitation_probability_max?.[i] ?? 0,
+    windMaxKn: Math.round(dd.wind_speed_10m_max?.[i] ?? 0),
+    gustMaxKn: Math.round(dd.wind_gusts_10m_max?.[i] ?? 0),
+  }));
+
+  return { hourly, daily };
+}
+
 // WMO-Wettercode → Emoji (grob gruppiert).
 export function weatherEmoji(code: number): string {
   if (code === 0) return "☀️";
