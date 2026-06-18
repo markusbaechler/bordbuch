@@ -285,8 +285,10 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
 Im Bordbuch-Screen (`DashboardScreen`) zwei Betriebs-Blöcke – Logik + Boot-Profil in
 `src/lib/boat.ts`, getestet in `src/lib/boat.test.ts`. **Reihenfolge (handlungsrelevant oben →
 Auswertung unten):** Wartung & Service → Tank & Reichweite → Jahr im Detail → Durchschnitt pro
-Jahr → Total. **Jahr-Selektor:** der Pro-Jahr-Balkenchart IST der Selektor (Balken antippbar) –
-KEINE separate Jahres-Chip-Reihe mehr (sparte zu viel Platz).
+Jahr → Total. **Jahr-Selektor:** natives **Dropdown** („Jahr") neben dem Metrik-Umschalter
+(intuitiver als Balken-Antippen, OS-Picker auf Mobile); der Pro-Jahr-Balkenchart visualisiert
+nur noch und hebt das gewählte Jahr hervor (Balken bleiben als Bonus antippbar). KEINE
+Jahres-Chip-Reihe mehr (sparte zu viel Platz).
 
 - **Boot-Profil** `BOAT_PROFILE` (zentrale Single Source, auch von `Topbar` genutzt):
   Regal 2750 Cuddy, Volvo Penta, Bj. 2007, Tank **290 l**, Annahme-Marschfahrt `cruiseKn = 18`

@@ -78,16 +78,16 @@ export function DashboardScreen({ entries }: { entries: Entry[] }) {
         <p className="py-8 text-center text-[13px] text-ink-3">Noch keine Einträge erfasst.</p>
       ) : (
         <>
-          {/* JAHR IM DETAIL – Chart dient als Jahr-Selektor (keine Chip-Reihe mehr) */}
+          {/* JAHR IM DETAIL – Jahr per Dropdown, Chart visualisiert + hebt es hervor */}
           <Eyebrow>Jahr im Detail</Eyebrow>
-          <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="flex gap-2">
               {METRICS.map((m) => (
                 <button
                   key={m.key}
                   onClick={() => setMetric(m.key)}
                   aria-pressed={metric === m.key}
-                  className={`min-h-9 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+                  className={`min-h-9 whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
                     metric === m.key
                       ? 'border-accent bg-accent text-white'
                       : 'border-line bg-surface text-ink-2'
@@ -98,17 +98,29 @@ export function DashboardScreen({ entries }: { entries: Entry[] }) {
               ))}
             </div>
             {activeYear !== null && (
-              <span className="tabnum shrink-0 font-mono text-[11px] text-ink-3">
-                {activeYear} · Balken tippen
-              </span>
+              <label className="flex shrink-0 items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-2">
+                  Jahr
+                </span>
+                <select
+                  value={activeYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  aria-label="Jahr wählen"
+                  className="tabnum min-h-9 rounded-full border border-line bg-surface px-3 py-1.5 font-mono text-[13px] font-bold text-ink"
+                >
+                  {years
+                    .slice()
+                    .reverse()
+                    .map((y) => (
+                      <option key={y.year} value={y.year}>
+                        {y.year}
+                      </option>
+                    ))}
+                </select>
+              </label>
             )}
           </div>
-          <YearChart
-            years={years}
-            metric={metric}
-            activeYear={activeYear}
-            onPick={(y) => setSelectedYear(y)}
-          />
+          <YearChart years={years} metric={metric} activeYear={activeYear} onPick={(y) => setSelectedYear(y)} />
           {detail && <YearDetail year={detail} avgHoursPerYear={total.avgHoursPerYear} />}
 
           {/* Ø PRO JAHR */}
