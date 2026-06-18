@@ -128,6 +128,10 @@ export const MAINTENANCE_SCHEDULE: MaintenanceItem[] = [
 ]
 
 export type MaintStatus = 'ok' | 'soon' | 'due' | 'unknown'
+export type MaintSource = 'override' | 'derived' | 'none'
+
+/** Manuell gesetzte „zuletzt erledigt"-Daten je Position (key → "YYYY-MM"). */
+export type MaintOverrides = Record<string, string>
 
 export interface MaintenanceResult extends MaintenanceItem {
   status: MaintStatus
@@ -135,6 +139,8 @@ export interface MaintenanceResult extends MaintenanceItem {
   monthsSince: number | null
   fraction: number | null // 0..>1 (Anteil des erreichten Intervalls, max aus h/Monaten)
   dueInHours: number | null // intervalHours − hoursSince (negativ = überfällig)
+  lastDone: string | null // "YYYY-MM" (override) bzw. Eintrags-Datum (abgeleitet)
+  lastDoneSource: MaintSource
 }
 
 export interface MaintenanceReport {
@@ -156,6 +162,35 @@ function parseDate(date: string): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
+/** "YYYY-MM" → Monats-Eckdaten (Anfang/Ende); ungültig → null. */
+function monthBounds(ym: string): { start: Date; end: Date } | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ym))
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  if (mo < 1 || mo > 12) return null
+  return { start: new Date(y, mo - 1, 1), end: new Date(y, mo, 0) } // Tag 0 = letzter Tag des Monats
+}
+
+/** "2026-04" oder "2026-04-15" → "04.26" (Anzeige). */
+export function formatMonthYY(value: string): string {
+  const m = /^(\d{4})-(\d{2})/.exec(String(value))
+  return m ? `${m[2]}.${m[1].slice(2)}` : value
+}
+
+/** Höchster Zählerstand aller Einträge mit Datum ≤ `date` (Baseline zu einem Service-Datum). */
+export function engineHoursAtDate(entries: Entry[], date: Date): number | null {
+  let best: number | null = null
+  for (const e of entries) {
+    const d = parseDate(e.date)
+    const eh = toNum(e.engineHours)
+    if (d != null && eh != null && d.getTime() <= date.getTime()) {
+      best = best == null ? eh : Math.max(best, eh)
+    }
+  }
+  return best
+}
+
 /** Erster Eintrag (chronologisch) eines bestimmten Jahres mit gültigem Datum + Zähler. */
 function firstServiceEntryOfYear(entries: Entry[], year: number): Entry | null {
   const inYear = entries
@@ -165,11 +200,17 @@ function firstServiceEntryOfYear(entries: Entry[], year: number): Entry | null {
 }
 
 /**
- * Wartungs-Report: leitet den „letzten Service" aus dem ersten Eintrag des
- * jüngsten Jahres mit Einträgen her und bewertet jede Position dynamisch gegen
- * Stunden- und Monatsintervall.
+ * Wartungs-Report. Pro Position ist das „zuletzt erledigt"-Datum entweder manuell
+ * gesetzt (`overrides[key]` = "YYYY-MM") oder wird aus dem ersten Eintrag des
+ * jüngsten Jahres abgeleitet (Annahme: Service beim Saisonstart/Winterlager).
+ * Die Stunden-Baseline zum Datum kommt aus dem Logbuch (`engineHoursAtDate`).
+ * Bewertet wird dynamisch gegen Stunden- UND Monatsintervall.
  */
-export function maintenanceReport(entries: Entry[], today: Date): MaintenanceReport {
+export function maintenanceReport(
+  entries: Entry[],
+  today: Date,
+  overrides: MaintOverrides = {},
+): MaintenanceReport {
   const currentHours = maxEngineHours(entries)
   const currentYear = today.getFullYear()
 
@@ -188,15 +229,34 @@ export function maintenanceReport(entries: Entry[], today: Date): MaintenanceRep
   const serviceHours = serviceEntry ? toNum(serviceEntry.engineHours) : null
   const newSeasonPending = serviceYear != null && currentYear > serviceYear
 
-  const serviceDateObj = serviceDate ? parseDate(serviceDate) : null
-  const monthsSinceService =
-    serviceDateObj != null ? (today.getTime() - serviceDateObj.getTime()) / MS_PER_MONTH : null
-
   const items: MaintenanceResult[] = MAINTENANCE_SCHEDULE.map((item) => {
-    const hoursSince =
-      currentHours != null && serviceHours != null ? Math.max(0, currentHours - serviceHours) : null
-    const monthsSince = monthsSinceService != null ? Math.max(0, monthsSinceService) : null
+    // 1) Letztes Service-Datum + Stunden-Baseline bestimmen.
+    let lastDone: string | null = null
+    let lastDoneSource: MaintSource = 'none'
+    let baseDate: Date | null = null
+    let baseHours: number | null = null
 
+    const override = overrides[item.key]
+    const bounds = override ? monthBounds(override) : null
+    if (bounds) {
+      lastDone = override
+      lastDoneSource = 'override'
+      baseDate = bounds.start
+      baseHours = engineHoursAtDate(entries, bounds.end) // Stand am Monatsende
+    } else if (serviceDate) {
+      lastDone = serviceDate
+      lastDoneSource = 'derived'
+      baseDate = parseDate(serviceDate)
+      baseHours = serviceHours
+    }
+
+    // 2) Verstrichene Stunden/Monate.
+    const hoursSince =
+      currentHours != null && baseHours != null ? Math.max(0, currentHours - baseHours) : null
+    const monthsSince =
+      baseDate != null ? Math.max(0, (today.getTime() - baseDate.getTime()) / MS_PER_MONTH) : null
+
+    // 3) Anteil des Intervalls (max aus Stunden/Monaten) → Ampel.
     const fracH =
       item.intervalHours != null && hoursSince != null ? hoursSince / item.intervalHours : null
     const fracM =
@@ -210,7 +270,16 @@ export function maintenanceReport(entries: Entry[], today: Date): MaintenanceRep
     const dueInHours =
       item.intervalHours != null && hoursSince != null ? item.intervalHours - hoursSince : null
 
-    return { ...item, status, hoursSince, monthsSince, fraction, dueInHours }
+    return {
+      ...item,
+      status,
+      hoursSince,
+      monthsSince,
+      fraction,
+      dueInHours,
+      lastDone,
+      lastDoneSource,
+    }
   })
 
   return { serviceYear, serviceDate, serviceHours, currentHours, newSeasonPending, items }

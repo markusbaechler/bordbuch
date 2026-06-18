@@ -5,6 +5,8 @@ import {
   tankRange,
   maintenanceReport,
   maintenanceSummary,
+  engineHoursAtDate,
+  formatMonthYY,
 } from './boat'
 
 function entry(p: Partial<Entry> & { id: string; date: string }): Entry {
@@ -118,6 +120,51 @@ describe('maintenanceReport', () => {
     const rep = maintenanceReport([], new Date(2026, 5, 18))
     expect(rep.serviceYear).toBeNull()
     expect(rep.items.every((i) => i.status === 'unknown')).toBe(true)
+  })
+})
+
+describe('maintenanceReport – manuelle Overrides (MM.JJ)', () => {
+  const entries = [
+    entry({ id: 'a', date: '2024-04-10', engineHours: 700 }),
+    entry({ id: 'b', date: '2025-04-10', engineHours: 900 }),
+    entry({ id: 'c', date: '2026-04-10', engineHours: 1000 }),
+    entry({ id: 'd', date: '2026-06-10', engineHours: 1060 }),
+  ]
+
+  it('nutzt das gesetzte Datum + die Stunden-Baseline aus dem Logbuch', () => {
+    // Impeller zuletzt 04/2024 → Baseline ~700 h; ~26 Monate her + 360 h gefahren.
+    const rep = maintenanceReport(entries, new Date(2026, 5, 18), { impeller: '2024-04' })
+    const imp = rep.items.find((i) => i.key === 'impeller')!
+    expect(imp.lastDone).toBe('2024-04')
+    expect(imp.lastDoneSource).toBe('override')
+    expect(imp.hoursSince).toBe(360) // 1060 − 700
+    expect(imp.status).toBe('due') // 360 h > 200 h und >24 Mt.
+  })
+
+  it('ohne Override fällt die Position auf den abgeleiteten Saisonstart zurück', () => {
+    const rep = maintenanceReport(entries, new Date(2026, 5, 18))
+    const imp = rep.items.find((i) => i.key === 'impeller')!
+    expect(imp.lastDoneSource).toBe('derived')
+    expect(imp.lastDone).toBe('2026-04-10') // erster 2026-Eintrag
+  })
+})
+
+describe('engineHoursAtDate', () => {
+  const entries = [
+    entry({ id: 'a', date: '2024-04-10', engineHours: 700 }),
+    entry({ id: 'b', date: '2025-04-10', engineHours: 900 }),
+  ]
+  it('liefert den höchsten Zählerstand bis zum Stichtag', () => {
+    expect(engineHoursAtDate(entries, new Date(2024, 11, 31))).toBe(700)
+    expect(engineHoursAtDate(entries, new Date(2025, 11, 31))).toBe(900)
+    expect(engineHoursAtDate(entries, new Date(2023, 0, 1))).toBeNull() // vor allen Einträgen
+  })
+})
+
+describe('formatMonthYY', () => {
+  it('formatiert YYYY-MM und YYYY-MM-DD auf MM.JJ', () => {
+    expect(formatMonthYY('2026-04')).toBe('04.26')
+    expect(formatMonthYY('2026-04-10')).toBe('04.26')
   })
 })
 
