@@ -157,19 +157,22 @@ Der Tab **„Karte"** zeigt eine interaktive Seekarte für den nördlichen Lago 
     Kandidaten (Tankstellen, Häfen, Liege-/Ankerplätze) aus OpenStreetMap und gibt sie als
     fertige Code-Zeilen aus – sichten und in `src/lib/mapData.ts` einfügen.
 - **GPS-Tacho:** Bei freigegebenem Standort zeigt ein Overlay die aktuelle Geschwindigkeit
-  in **km/h und Knoten**; die eigene Position erscheint als Marker.
+  in **km/h und Knoten**; die eigene Position erscheint als Marker. Ist der Standort blockiert
+  (z. B. auf Android), führt eine **Schritt-für-Schritt-Hilfe** durch die Freigabe.
 - **Fahrtaufzeichnung → Logbuch:** „Fahrt aufzeichnen" zeichnet den GPS-Track auf und zeigt
   live **Strecke (km/sm), Dauer und Ø-/Max-Tempo**. Mit „Ins Logbuch" wird daraus ein neuer
   Logbuch-Eintrag **vorbefüllt** (Start-/Zielhafen automatisch erkannt, Eckdaten in den
   Notizen) – Betriebsstunden trägst du noch selbst ein. Die Aufzeichnung ist bewusst opt-in
   und pausiert bei ausgeschaltetem Bildschirm, um Akku zu sparen.
-- **Mess-/Planungstool:** „Messen" antippen, dann zwei Punkte auf der Karte – die App zeigt
-  **Distanz (km/sm), Kurs und ETA** beim aktuellen bzw. einem Planungstempo.
-- **Wind-Lage:** Ein Badge oben rechts zeigt die aktuelle Windrichtung (Pfeil), Stärke und
-  Böen für Locarno (Open-Meteo).
-- **See-Regeln & Zonen:** Das Naturschutzgebiet **Bolle di Magadino** ist als No-Go-Fläche
-  eingezeichnet; „See-Regeln" blendet die wichtigsten Verhaltensregeln ein. Diese Angaben
-  sind **Annäherungen ohne Gewähr** – massgeblich bleiben die offiziellen Schifffahrtskarten.
+- **Mess-/Planungstool (auf dem Wasser):** „Messen" antippen, dann zwei Punkte – der angezeigte
+  Weg **folgt dem Wasser** (kein Geradeaus durch die Berge) und nennt **Distanz, Kurs und ETA**.
+- **Wetter & Wind über den ganzen See:** Ein Badge oben rechts zeigt **Wetter, Temperatur,
+  Regen und Wind** für deine Gegend; ein Tipp blendet das **Wind-Feld** an mehreren Punkten von
+  Locarno bis Stresa ein (Open-Meteo).
+- **See-Regeln & Zonen:** „See-Regeln" markiert die **Uferzone** (innerhalb 150 m Langsamfahrt)
+  entlang der Küstenlinie und das Naturschutzgebiet **Bolle di Magadino** als No-Go-Fläche und
+  blendet die wichtigsten Regeln ein. **Annäherungen ohne Gewähr** – massgeblich bleiben die
+  offiziellen Schifffahrtskarten.
 
 Quellen-Attribution (© OpenStreetMap / © OpenSeaMap) wird in der Karte angezeigt. Es sind
 keine Keys oder zusätzliche Secrets nötig; die Standortfreigabe erfolgt im Browser.

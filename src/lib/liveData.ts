@@ -190,3 +190,72 @@ export async function fetchLevelHistory(days = 30, spot: Spot = LOCARNO): Promis
 
   return { points };
 }
+
+// ---------------------------------------------------------------------------
+// Conditions an mehreren Punkten über den ganzen See (Wind-Feld + Wetter/Regen).
+// Open-Meteo erlaubt mehrere Koordinaten in EINER Anfrage (komma-getrennt) und
+// liefert dann ein Array – so deckt ein Aufruf den ganzen Lago Maggiore ab.
+// ---------------------------------------------------------------------------
+
+export interface LakeCondition {
+  name: string;
+  lat: number;
+  lon: number;
+  tempC: number;
+  weatherCode: number;
+  precipMm: number;
+  windKn: number;
+  gustKn: number;
+  dirDeg: number;
+}
+
+// Messpunkte von Nord nach Süd (CH-Nordbecken + italienische Seite).
+const LAKE_POINTS = [
+  { name: "Locarno", lat: 46.17, lon: 8.8 },
+  { name: "Brissago", lat: 46.12, lon: 8.72 },
+  { name: "Cannobio", lat: 46.06, lon: 8.7 },
+  { name: "Luino", lat: 46.0, lon: 8.74 },
+  { name: "Verbania", lat: 45.93, lon: 8.57 },
+  { name: "Stresa", lat: 45.88, lon: 8.54 },
+];
+
+export async function fetchLakeConditions(): Promise<LakeCondition[]> {
+  const lat = LAKE_POINTS.map((p) => p.lat).join(",");
+  const lon = LAKE_POINTS.map((p) => p.lon).join(",");
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&current=weather_code,temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m` +
+    `&wind_speed_unit=kn&timezone=auto`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
+  const d = await res.json();
+  const arr = Array.isArray(d) ? d : [d]; // bei mehreren Koordinaten: Array
+
+  return arr.map((o: any, i: number) => ({
+    name: LAKE_POINTS[i]?.name ?? "",
+    lat: LAKE_POINTS[i]?.lat ?? o.latitude,
+    lon: LAKE_POINTS[i]?.lon ?? o.longitude,
+    tempC: Math.round(o.current?.temperature_2m ?? 0),
+    weatherCode: o.current?.weather_code ?? 0,
+    precipMm: o.current?.precipitation ?? 0,
+    windKn: Math.round(o.current?.wind_speed_10m ?? 0),
+    gustKn: Math.round(o.current?.wind_gusts_10m ?? 0),
+    dirDeg: o.current?.wind_direction_10m ?? 0,
+  }));
+}
+
+// WMO-Wettercode → Emoji (grob gruppiert).
+export function weatherEmoji(code: number): string {
+  if (code === 0) return "☀️";
+  if (code <= 2) return "🌤️";
+  if (code === 3) return "☁️";
+  if (code === 45 || code === 48) return "🌫️";
+  if (code >= 51 && code <= 57) return "🌦️";
+  if (code >= 61 && code <= 67) return "🌧️";
+  if (code >= 71 && code <= 77) return "❄️";
+  if (code >= 80 && code <= 82) return "🌦️";
+  if (code >= 85 && code <= 86) return "🌨️";
+  if (code >= 95) return "⛈️";
+  return "🌥️";
+}

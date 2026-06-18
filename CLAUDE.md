@@ -210,17 +210,26 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
   km/h (×3.6) und Knoten (×1.94384), `font-mono`+`tabnum`; fehlt `coords.speed` (Desktop),
   Schätzung aus zwei Fixes (Haversine ÷ dt). „Mich zentrieren" schaltet Folgen ein, eine
   Kartengeste beendet es. Geo-Mathematik (Haversine, Bearing, Einheiten) in `src/lib/geo.ts`.
-- **Mess-/Planungstool:** Button „Messen" (unten links) schaltet einen Modus, in dem zwei
-  Karten-Taps gesetzt werden (`map.on('click')` via `measuringRef`); Panel zeigt Distanz
-  (km/sm), Kurs (`bearingDeg`+`cardinal8`) und ETA beim aktuellen Tempo bzw. einem
-  Planungstempo (12 kn), wenn man steht. Linie/Punkte in eigener Layer-Gruppe.
-- **Wind-Lage:** einmaliger `fetchWind()` (Open-Meteo, `src/lib/liveData.ts`) → Badge oben
-  rechts mit Pfeil (rotiert auf `directionDeg+180`, zeigt wohin der Wind weht), Richtung
-  (woher) + kn + Böen.
-- **See-Regeln/Zonen:** `src/lib/zones.ts` – Polygon „Bolle di Magadino" (Naturschutz, aus
-  OSM way 160197486), immer als rote No-Go-Fläche mit Popup gezeichnet; Button „See-Regeln"
-  blendet eine Legende (`LAKE_RULES`) ein. **Bewusst „ohne Gewähr"**: Geometrie/Regeln sind
-  Annäherungen, offizielle Schifffahrtskarten sind massgeblich.
+- **POI-Filter:** Button „Filter" (oben links) öffnet ein **Dropdown** mit Häkchen je Kategorie
+  (`ACTIVE_CATEGORIES`) – KEIN Querscroll-Chip-Band mehr.
+- **Standort-Hilfe (Android/iOS):** `navigator.permissions` liefert den Status; bei `denied`
+  zeigt das Tacho-Panel „⚠ Standort blockiert" → Modal mit Schritt-für-Schritt-Anleitung
+  (Chrome-Schloss → Berechtigungen → Standort; iOS Safari/Ortungsdienste) + „Seite neu laden".
+  Bei `prompt` ein „Standort aktivieren"-Button (`getCurrentPosition` löst den OS-Dialog aus).
+- **Mess-/Planungstool MIT Wasser-Routing:** „Messen" → zwei Karten-Taps. Statt Luftlinie
+  rechnet `routeOnWater()` (`src/lib/route.ts`) einen Weg, der **im See bleibt**: Punkt-im-See
+  (Ray-Casting gegen `src/lib/lake.ts`), ~200-m-Gitter aller Wasserzellen, **A\*** + String-
+  Pulling. Panel: Distanz (km/sm, entlang Wasser), Kurs, ETA. Fallback Luftlinie (rot), wenn
+  kein Wasserweg. `measuringRef` wird in `toggleMeasure` **synchron** gesetzt (Tap direkt danach
+  greift). Seepolygon erzeugt via `scripts/fetch-lake.mjs` (OSM Relation 11758, ~470 Punkte).
+- **Wetter & Wind über den ganzen See:** `fetchLakeConditions()` (`liveData.ts`) holt in EINER
+  Open-Meteo-Anfrage 6 Punkte (Locarno…Stresa) mit Temp/Wettercode/Niederschlag/Wind. Badge
+  oben rechts = Conditions am nächsten Punkt zur GPS-Position (Emoji/Temp/Wind/Regen); Tippen
+  blendet das **Wind-Feld** ein (Pfeil-Marker je Punkt, `windIcon`).
+- **See-Regeln/Zonen (nur wenn aktiviert):** Button „See-Regeln" zeichnet die **Uferlinie**
+  (`LAKE_OUTLINE`, Bezug für die 150-m-Langsamfahrzone) + das No-Go-Polygon **Bolle di Magadino**
+  (`src/lib/zones.ts`, OSM way 160197486) und blendet die Legende (`LAKE_RULES`) ein. Default
+  aus → Karte bleibt sauber. **Bewusst „ohne Gewähr"**: Annäherungen, offizielle Karten massgeblich.
 - **Layout:** Die Karte braucht feste Höhe → eigenes, padding-/scrollfreies `<main>` in
   `App.tsx` (`screen === 'map'` rendert full-bleed, unabhängig vom Einträge-Ladezustand).
   `ResizeObserver` ruft `map.invalidateSize()` (mobile URL-Leiste). Popups + Attribution
