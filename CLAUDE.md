@@ -1,4 +1,4 @@
-# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v5 (Tank-/Restreichweite + Wartung)
+# CLAUDE.md – Bordbuch (Motorboot-Logbuch)  · v6 (Ankerwache/Anker-Alarm)
 
 WICHTIG: Logbuch/CRUD/Dashboard (§1–§11) sind umgesetzt. v3 ergänzt das Feature
 **„Vor der Abfahrt"** (Live-Wetter/Pegel/Wassertemperatur, §14), die **History-Modals**
@@ -248,7 +248,9 @@ Neuer Bottom-Nav-Tab **„Karte"** (`Screen 'map'`, Karten-Pin-Icon). Screen
   (Backend-Modell ist fix, §3/§4) – nur die Fahrt-Eckdaten landen im Eintrag.
 - **GPS & Akku:** Hook `src/hooks/useGeoPosition.ts` (`watchPosition`, `enableHighAccuracy`).
   Der Watch läuft nur, solange der Karten-Tab gemountet UND sichtbar ist (Page-Visibility:
-  Bildschirm aus/Hintergrund → Watch stoppt, kommt beim Zurückkehren wieder). **Tacho** zeigt
+  Bildschirm aus/Hintergrund → Watch stoppt, kommt beim Zurückkehren wieder). **Ausnahme:**
+  bei aktiver Ankerwache (§19) hält ein zweites Argument `keepAliveWhenHidden` den Watch
+  durchgehend am Laufen. **Tacho** zeigt
   km/h (×3.6) und Knoten (×1.94384), `font-mono`+`tabnum`; fehlt `coords.speed` (Desktop),
   Schätzung aus zwei Fixes (Haversine ÷ dt). „Mich zentrieren" schaltet Folgen ein, eine
   Kartengeste beendet es. Geo-Mathematik (Haversine, Bearing, Einheiten) in `src/lib/geo.ts`.
@@ -336,5 +338,36 @@ der früheren Chip-Reihe.
 React/Tailwind-Plugin); Testdateien aus `tsconfig.app.json` ausgeschlossen → Pages-Build
 (`tsc -b`) unberührt. Abgedeckt (reine Logik): `calc.ts` (Stunden/Verbrauch/Aggregate),
 `geo.ts` (Haversine/Bearing/Einheiten), `route.ts` (`inLake`/`routeOnWater`/`shoreZoneRing`/
-`nearestHarborName`), `boat.ts` (Tank-/Restreichweite, Wartungs-Report). Vor jedem Deploy
+`nearestHarborName`), `boat.ts` (Tank-/Restreichweite, Wartungs-Report), `anchor.ts`
+(Ankerwache: `evalAnchor`-Status/Distanz, Entprellung, Radius-Clamp). Vor jedem Deploy
 sinnvoll: `npm test` grün halten.
+
+## 19. Ankerwache / Anker-Alarm (v6)
+Karten-Werkzeug **„⚓ Ankerwache"** (`MapScreen`, unten links über „Messen"/„See-Regeln").
+Schlägt Alarm, wenn das vor Anker liegende Boot den eingestellten Radius verlässt. Reine
+Logik + Tests in `src/lib/anchor.ts` / `anchor.test.ts`; Hook `src/hooks/useAnchorWatch.ts`.
+
+- **Bewusst „Bildschirm-an-Wache":** Ein echter Hintergrund-Alarm bei ausgeschaltetem Screen
+  ist im Web nicht zuverlässig (dafür braucht es eine native App, vgl. ankeralarm.app). Darum
+  hält `src/hooks/useWakeLock.ts` (Screen Wake Lock API) den Bildschirm an, solange die Wache
+  läuft (Re-Acquire nach Tab-Wechsel); Hinweis im Panel „Gerät ans Ladegerät". Kein neuer Dep.
+- **Logik** (`anchor.ts`): `evalAnchor(anchor, lat, lon, radiusM)` → Distanz (Haversine, §16),
+  `fraction` und Status `ok | warn(≥80 %) | breach(≥100 %)`. **Entprellung:** Alarm erst nach
+  `BREACH_FIXES = 3` aufeinanderfolgenden Fixes ausserhalb (fängt GPS-Ausreisser ab,
+  `nextBreachCount`). Radius `clampRadius` zwischen `MIN_RADIUS_M = 15` und `MAX_RADIUS_M = 120`,
+  Default 30 m, Slider-Schritt 5 m.
+- **Hook** (`useAnchorWatch`): füttert sich aus dem bestehenden `useGeoPosition`-Fix (KEIN
+  eigener Watch). Bei aktiver Wache schaltet `MapScreen` `useGeoPosition(true, keepAlive)` → der
+  Watch läuft auch im Hintergrund weiter (sonst Akku-Pause, §16). Hält Anker/Radius/Status/
+  Max-Abstand + ausgedünnte **Drift-Spur** (≤240 Punkte). `drop(lat,lon)` setzt den Anker auf die
+  aktuelle GPS-Position (und ruft `unlockAlarm()` im Klick, damit Audio freigeschaltet wird),
+  `lift()` lichtet, `setRadius()`, `acknowledge()` (Alarm quittieren → still bis zur Rückkehr in
+  den Radius). **Persistenz** in localStorage (`bordbuch-anchor-v1`, Anker/Radius/Wache) → ein
+  Reload killt die Wache nicht; KEIN Backend (Sheet fix, §3/§4).
+- **Alarm** (`src/lib/alarmSound.ts`): durchdringende Web-Audio-Sirene (Frequenz-LFO, KEINE
+  Audio-Datei) + `navigator.vibrate` (Android) + vollflächiges rot blinkendes Overlay
+  (`anchor-alarm-overlay`, `z-[1300]` über allem; respektiert `prefers-reduced-motion`) mit
+  Abstand/Radius und Buttons „Alarm quittieren" / „Anker lichten".
+- **Karte:** Anker-Pin (`anchor-pin`), Radiuskreis (`L.circle`, Farbe nach Status: Teal/Amber/
+  Rot) und gestrichelte Drift-Spur. Panel: Status, Abstand (+max), Radius-Slider, Setzen/Lichten.
+- **„Ohne Gewähr"** – kein Ersatz für eine Ankerwache an Bord; nur solange App offen & Screen an.

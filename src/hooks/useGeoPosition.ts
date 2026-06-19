@@ -38,7 +38,10 @@ const INITIAL: GeoState = {
   supported: SUPPORTED,
 }
 
-export function useGeoPosition(enabled = true): GeoState {
+// `keepAliveWhenHidden`: normal pausiert der Watch bei verstecktem Tab (Akku).
+// Die Ankerwache braucht aber laufende Fixes auch im Hintergrund → dann nicht
+// pausieren (zusammen mit dem Wake Lock, der den Bildschirm an hält).
+export function useGeoPosition(enabled = true, keepAliveWhenHidden = false): GeoState {
   const [state, setState] = useState<GeoState>(INITIAL)
   // Letzter Fix für die Geschwindigkeits-Schätzung, wenn coords.speed fehlt.
   const lastFix = useRef<{ lat: number; lon: number; t: number } | null>(null)
@@ -100,7 +103,13 @@ export function useGeoPosition(enabled = true): GeoState {
       }
     }
 
-    // Akku: bei verstecktem Tab/Screen pausieren.
+    // Ankerwache aktiv: Watch dauerhaft laufen lassen (Wake Lock hält den
+    // Screen an), sonst Akku sparen und bei verstecktem Tab/Screen pausieren.
+    if (keepAliveWhenHidden) {
+      start()
+      return () => stop()
+    }
+
     const onVisibility = () => (document.hidden ? stop() : start())
     document.addEventListener('visibilitychange', onVisibility)
     if (!document.hidden) start()
@@ -109,7 +118,7 @@ export function useGeoPosition(enabled = true): GeoState {
       document.removeEventListener('visibilitychange', onVisibility)
       stop()
     }
-  }, [enabled])
+  }, [enabled, keepAliveWhenHidden])
 
   return state
 }

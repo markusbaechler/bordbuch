@@ -14,6 +14,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useGeoPosition, speedReadout } from '../hooks/useGeoPosition'
 import { useTripRecorder, fmtDistance, fmtDuration } from '../hooks/useTripRecorder'
+import { useAnchorWatch } from '../hooks/useAnchorWatch'
+import { MIN_RADIUS_M, MAX_RADIUS_M, type AnchorStatus } from '../lib/anchor'
 import { haversineM, bearingDeg, cardinal8, KM_TO_NM, MS_TO_KN } from '../lib/geo'
 import { routeOnWater, shoreZoneRing } from '../lib/route'
 import { LAKE_OUTLINE } from '../lib/lake'
@@ -34,6 +36,14 @@ import type { EntryDraft } from './FormScreen'
 
 const CENTER: L.LatLngTuple = [46.13, 8.78]
 const START_ZOOM = 12
+const COND = "'Barlow Condensed', sans-serif"
+
+// Ringfarbe der Ankerwache je Status (Teal ok / Amber Vorwarnung / Rot Alarm).
+const RING_COLOR: Record<AnchorStatus, string> = {
+  ok: '#0C7C82',
+  warn: '#E8930C',
+  breach: '#D8352A',
+}
 
 const esc = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)
@@ -61,6 +71,13 @@ const gpsIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
+const anchorIcon = L.divIcon({
+  className: '',
+  html: '<div class="anchor-pin">⚓</div>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+})
+
 // Wind-Pfeil (zeigt, wohin der Wind weht = dir+180) + Stärke.
 function windIcon(c: LakeCondition): L.DivIcon {
   return L.divIcon({
@@ -86,6 +103,9 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
   const meMarkerRef = useRef<L.Marker | null>(null)
   const meCircleRef = useRef<L.Circle | null>(null)
   const trackLineRef = useRef<L.Polyline | null>(null)
+  const anchorMarkerRef = useRef<L.Marker | null>(null)
+  const anchorCircleRef = useRef<L.Circle | null>(null)
+  const driftLineRef = useRef<L.Polyline | null>(null)
   const measuringRef = useRef(false)
   const [ready, setReady] = useState(false)
   const [follow, setFollow] = useState(false)
@@ -96,16 +116,25 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
   const [showWind, setShowWind] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [showWeather, setShowWeather] = useState(false)
+  const [showAnchor, setShowAnchor] = useState(false)
+  const [keepGeoAlive, setKeepGeoAlive] = useState(false)
   const [conditions, setConditions] = useState<LakeCondition[] | null>(null)
   const [permState, setPermState] = useState<PermState>('unknown')
   const [showGeoHelp, setShowGeoHelp] = useState(false)
 
-  const geo = useGeoPosition()
+  // Bei aktiver Ankerwache läuft der GPS-Watch auch im Hintergrund weiter.
+  const geo = useGeoPosition(true, keepGeoAlive)
   const fix = useMemo(
     () => ({ lat: geo.lat, lon: geo.lon, speedMs: geo.speedMs, timestamp: geo.timestamp }),
     [geo.lat, geo.lon, geo.speedMs, geo.timestamp],
   )
   const trip = useTripRecorder(fix)
+  const anchor = useAnchorWatch(fix)
+
+  // Keep-Alive des GPS-Watch an die Wache koppeln (ein Render Verzug ist ok).
+  useEffect(() => {
+    setKeepGeoAlive(anchor.watching)
+  }, [anchor.watching])
 
   const [active, setActive] = useState<Set<CategoryKey>>(
     () => new Set(ACTIVE_CATEGORIES.map((c) => c.key)),
@@ -168,6 +197,9 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
       meMarkerRef.current = null
       meCircleRef.current = null
       trackLineRef.current = null
+      anchorMarkerRef.current = null
+      anchorCircleRef.current = null
+      driftLineRef.current = null
       setReady(false)
     }
   }, [])
@@ -293,6 +325,52 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
     }
   }, [ready, trip.track])
 
+  // --- Ankerwache: Anker-Pin + Radiuskreis + Drift-Spur ----------------------
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map) return
+    const a = anchor.anchor
+    if (!a) {
+      anchorMarkerRef.current?.remove()
+      anchorCircleRef.current?.remove()
+      driftLineRef.current?.remove()
+      anchorMarkerRef.current = null
+      anchorCircleRef.current = null
+      driftLineRef.current = null
+      return
+    }
+    const pos: L.LatLngTuple = [a.lat, a.lon]
+    const color = anchor.status === 'idle' ? RING_COLOR.ok : RING_COLOR[anchor.status]
+
+    if (!anchorMarkerRef.current) {
+      anchorMarkerRef.current = L.marker(pos, { icon: anchorIcon, zIndexOffset: 800 }).addTo(map)
+    } else {
+      anchorMarkerRef.current.setLatLng(pos)
+    }
+    if (!anchorCircleRef.current) {
+      anchorCircleRef.current = L.circle(pos, {
+        radius: anchor.radiusM,
+        color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.1,
+      }).addTo(map)
+    } else {
+      anchorCircleRef.current.setLatLng(pos).setRadius(anchor.radiusM).setStyle({ color, fillColor: color })
+    }
+    const latlngs = anchor.driftTrack.map((p) => [p.lat, p.lon] as L.LatLngTuple)
+    if (!driftLineRef.current) {
+      driftLineRef.current = L.polyline(latlngs, {
+        color: '#52708A',
+        weight: 2,
+        opacity: 0.7,
+        dashArray: '3 4',
+      }).addTo(map)
+    } else {
+      driftLineRef.current.setLatLngs(latlngs)
+    }
+  }, [ready, anchor.anchor, anchor.radiusM, anchor.status, anchor.driftTrack])
+
   // --- Mess-Ergebnis (Wasser-Route) ------------------------------------------
   const measure = useMemo(() => {
     if (measurePts.length < 2) return null
@@ -370,6 +448,7 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
     const next = !measuring
     measuringRef.current = next // synchron, damit ein Tap direkt danach greift
     setShowRules(false)
+    setShowAnchor(false)
     setMeasuring(next)
     if (next) setFollow(false)
     else setMeasurePts([])
@@ -378,7 +457,15 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
     measuringRef.current = false
     setMeasuring(false)
     setMeasurePts([])
+    setShowAnchor(false)
     setShowRules((s) => !s)
+  }
+  function toggleAnchor() {
+    measuringRef.current = false
+    setMeasuring(false)
+    setMeasurePts([])
+    setShowRules(false)
+    setShowAnchor((s) => !s)
   }
   function requestGeo() {
     if (!('geolocation' in navigator)) return
@@ -553,6 +640,9 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
 
       {/* Werkzeuge (unten links) */}
       <div className="absolute bottom-9 left-3 z-[1000] flex flex-col gap-2">
+        <ToolButton label="Ankerwache" active={anchor.watching} onClick={toggleAnchor}>
+          <span className="text-[18px] leading-none">⚓</span>
+        </ToolButton>
         <ToolButton label="Messen" active={measuring} onClick={toggleMeasure}>
           <RulerIcon />
         </ToolButton>
@@ -601,6 +691,11 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
           </ul>
         </BottomPanel>
       )}
+      {showAnchor && (
+        <BottomPanel onClose={() => setShowAnchor(false)} title="Ankerwache">
+          <AnchorPanel anchor={anchor} geoLat={geo.lat} geoLon={geo.lon} denied={denied} />
+        </BottomPanel>
+      )}
 
       <button
         onClick={locate}
@@ -626,6 +721,35 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
             onToggleWind={() => setShowWind((s) => !s)}
           />
         </Modal>
+      )}
+
+      {anchor.alarm && (
+        <div className="anchor-alarm-overlay fixed inset-0 z-[1300] flex flex-col items-center justify-center gap-4 bg-danger px-6 text-center text-white">
+          <div className="text-[64px] leading-none">⚓</div>
+          <div className="text-3xl font-bold" style={{ fontFamily: COND }}>
+            ANKER-ALARM
+          </div>
+          <div className="tabnum font-mono text-lg">
+            Abstand {Math.round(anchor.distanceM ?? 0)} m · Radius {anchor.radiusM} m
+          </div>
+          <p className="max-w-[280px] text-[13px] leading-snug text-white/90">
+            Das Boot hat den Ankerradius verlassen. Position prüfen!
+          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={anchor.acknowledge}
+              className="min-h-12 rounded-xl bg-white px-5 py-3 text-[14px] font-bold text-danger"
+            >
+              Alarm quittieren
+            </button>
+            <button
+              onClick={anchor.lift}
+              className="min-h-12 rounded-xl border-2 border-white px-5 py-3 text-[14px] font-bold text-white"
+            >
+              Anker lichten
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -711,6 +835,97 @@ function GeoHelp({ denied, onRetry, onClose }: { denied: boolean; onRetry: () =>
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+function AnchorPanel({
+  anchor,
+  geoLat,
+  geoLon,
+  denied,
+}: {
+  anchor: ReturnType<typeof useAnchorWatch>
+  geoLat: number | null
+  geoLon: number | null
+  denied: boolean
+}) {
+  const hasGps = geoLat != null && geoLon != null
+  const statusLabel =
+    anchor.status === 'breach'
+      ? 'AUSSERHALB'
+      : anchor.status === 'warn'
+        ? 'nahe Grenze'
+        : 'in Position'
+  const statusColor =
+    anchor.status === 'breach' ? 'text-danger' : anchor.status === 'warn' ? 'text-[#E8930C]' : 'text-good'
+
+  return (
+    <div className="space-y-2">
+      {anchor.watching ? (
+        <>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-3">Status</span>
+            <span className={`text-[11px] font-bold ${statusColor}`}>● {statusLabel}</span>
+          </div>
+          <Row label="Abstand" value={`${Math.round(anchor.distanceM ?? 0)} m`} sub={`max ${Math.round(anchor.maxDistanceM)} m`} />
+        </>
+      ) : (
+        <p className="text-[11px] leading-snug text-ink-2">
+          Anker an der aktuellen Position setzen. Die Wache alarmiert, sobald das Boot den Radius verlässt.
+        </p>
+      )}
+
+      <div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-3">Radius</span>
+          <span className="tabnum font-mono text-[12px] font-bold text-ink">{anchor.radiusM} m</span>
+        </div>
+        <input
+          type="range"
+          min={MIN_RADIUS_M}
+          max={MAX_RADIUS_M}
+          step={5}
+          value={anchor.radiusM}
+          onChange={(e) => anchor.setRadius(Number(e.target.value))}
+          className="mt-1 w-full accent-[var(--accent)]"
+          aria-label="Ankerradius"
+        />
+      </div>
+
+      {anchor.watching ? (
+        <>
+          {anchor.alarm && (
+            <button
+              onClick={anchor.acknowledge}
+              className="w-full rounded-lg bg-danger px-2 py-1.5 text-[11px] font-semibold text-white"
+            >
+              🔕 Alarm quittieren
+            </button>
+          )}
+          <button
+            onClick={anchor.lift}
+            className="w-full rounded-lg border border-line px-2 py-1.5 text-[11px] font-semibold text-ink-2"
+          >
+            Anker lichten
+          </button>
+        </>
+      ) : hasGps ? (
+        <button
+          onClick={() => anchor.drop(geoLat!, geoLon!)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-2 py-1.5 text-[11px] font-semibold text-white"
+        >
+          ⚓ Anker hier setzen
+        </button>
+      ) : (
+        <p className="text-[10px] font-semibold text-danger">
+          {denied ? '⚠ Standort blockiert – im Tacho-Panel freigeben.' : 'Warte auf GPS-Position…'}
+        </p>
+      )}
+
+      <p className="text-[9px] leading-snug text-ink-3">
+        Bildschirm bleibt an (Akku!) – Gerät am besten ans Ladegerät. Ohne Gewähr.
+      </p>
     </div>
   )
 }

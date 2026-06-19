@@ -133,6 +133,28 @@ body {
   }
 }
 
+/* Ankerwache: gesetzter Anker als Pin. */
+.anchor-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+/* Vollflächiger Alarm: kräftiges rotes Blinken (steps = hartes An/Aus). */
+@keyframes anchor-alarm-blink {
+  50% {
+    opacity: 0.45;
+  }
+}
+.anchor-alarm-overlay {
+  animation: anchor-alarm-blink 0.9s steps(1, end) infinite;
+}
+
 /* Wind-Feld-Pfeile (mehrere Punkte über den See). */
 .wind-arrow {
   display: flex;
