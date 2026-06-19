@@ -129,7 +129,7 @@ export function DashboardScreen({ entries }: { entries: Entry[] }) {
 
           {/* TOTAL über alle Jahre */}
           <Eyebrow>Total · alle Jahre</Eyebrow>
-          <div className="mb-2 grid grid-cols-2 gap-[11px]">
+          <div className="mb-2 grid grid-cols-2 gap-[11px] sm:grid-cols-4">
             <Gauge label="Betriebsstunden" value={fmt(total.totalOperatingHours)} unit="h" tick="motor" />
             <Gauge label="Ø Verbrauch" value={fmt(total.avgConsumptionLh)} unit="l/h" tick="exakt" hot />
             <Gauge

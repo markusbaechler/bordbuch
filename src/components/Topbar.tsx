@@ -17,7 +17,7 @@ export function Topbar({
         <div className="font-display text-[21px] font-bold uppercase tracking-[0.14em] text-ink">
           {title}
         </div>
-        <div className="mt-[3px] flex items-center gap-1.5 text-[11px] tracking-wide text-ink-2">
+        <div className="mt-[3px] flex items-center gap-1.5 text-[11px] tracking-wide text-ink-2 lg:hidden">
           <span className="h-1.5 w-1.5 rounded-full bg-teal shadow-[0_0_0_3px_var(--teal-soft)]" />
           {BOAT_PROFILE.shortName} · {BOAT_PROFILE.location}
         </div>

@@ -1,45 +1,10 @@
-import type { SVGProps } from 'react'
-import { IconDashboard, IconList, IconPlus } from './icons'
+import type { ReactNode } from 'react'
+import { IconPlus } from './icons'
+import { NAV_ITEMS, isNavActive, type Screen } from './navItems'
 
-export type Screen = 'conditions' | 'map' | 'dash' | 'list' | 'detail' | 'new'
+export type { Screen }
 
-/** Kompass-Icon für den „Wetter"-Tab (inline, ohne Eingriff in icons.tsx). */
-function IconCompass(p: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      width="22"
-      height="22"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      viewBox="0 0 24 24"
-      {...p}
-    >
-      <circle cx="12" cy="12" r="9" />
-      <polygon points="12,7 14.5,14.5 12,13 9.5,14.5" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
-
-/** Karten-Pin-Icon für den „Karte"-Tab (inline). */
-function IconMap(p: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      width="22"
-      height="22"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      viewBox="0 0 24 24"
-      {...p}
-    >
-      <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" />
-      <circle cx="12" cy="10" r="2.5" />
-    </svg>
-  )
-}
-
-/** Untere Navigation mit zentralem FAB für „Neu". */
+/** Untere Navigation mit zentralem FAB für „Neu" – nur mobil/Tablet (Desktop: Seitenleiste). */
 export function BottomNav({
   active,
   onNavigate,
@@ -48,31 +13,16 @@ export function BottomNav({
   onNavigate: (s: Screen) => void
 }) {
   return (
-    <nav className="flex shrink-0 border-t border-line bg-surface px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-      <NavButton
-        label="Wetter"
-        active={active === 'conditions'}
-        onClick={() => onNavigate('conditions')}
-        icon={<IconCompass />}
-      />
-      <NavButton
-        label="Karte"
-        active={active === 'map'}
-        onClick={() => onNavigate('map')}
-        icon={<IconMap />}
-      />
-      <NavButton
-        label="Bordbuch"
-        active={active === 'dash'}
-        onClick={() => onNavigate('dash')}
-        icon={<IconDashboard />}
-      />
-      <NavButton
-        label="Logbuch"
-        active={active === 'list' || active === 'detail'}
-        onClick={() => onNavigate('list')}
-        icon={<IconList />}
-      />
+    <nav className="flex shrink-0 border-t border-line bg-surface px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:hidden">
+      {NAV_ITEMS.map((item) => (
+        <NavButton
+          key={item.screen}
+          label={item.label}
+          active={isNavActive(item, active)}
+          onClick={() => onNavigate(item.screen)}
+          icon={<item.Icon />}
+        />
+      ))}
       <button
         onClick={() => onNavigate('new')}
         className="mx-1.5 -mt-[22px] flex max-w-[62px] flex-1 flex-col items-center gap-1 rounded-[18px] bg-accent px-0 pb-2 pt-[11px] text-[11px] font-semibold text-white shadow-[0_8px_18px_rgba(28,92,140,.4)]"
@@ -93,7 +43,7 @@ function NavButton({
   label: string
   active: boolean
   onClick: () => void
-  icon: React.ReactNode
+  icon: ReactNode
 }) {
   return (
     <button

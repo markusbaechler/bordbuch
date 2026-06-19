@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ToastProvider, useToast } from './components/Toast'
 import { Topbar } from './components/Topbar'
 import { BottomNav, type Screen } from './components/BottomNav'
+import { SideNav } from './components/SideNav'
 import { Spinner } from './components/Spinner'
 import { ConditionsScreen } from './screens/ConditionsScreen'
 import { MapScreen } from './screens/MapScreen'
@@ -147,70 +148,72 @@ function Shell() {
     else setScreen(s)
   }
 
-  // Die Karte ist full-bleed (eigene feste Höhe) und unabhängig vom Einträge-
-  // Ladezustand – darum bekommt sie ein eigenes, padding-/scrollfreies <main>.
-  if (screen === 'map') {
-    return (
-      <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-surface shadow-[var(--shadow)]">
+  // Responsives Shell: mobil = Telefon-Spalte mit Bottom-Nav; ab lg = Navigations-
+  // Seitenleiste + breite Inhaltsspalte. Die Karte ist immer full-bleed (eigene feste
+  // Höhe, padding-/scrollfreies <main>), Inhalts-Screens bekommen eine angenehme
+  // Lesebreite (zentriert), keine über den ganzen Desktop gezerrten Texte.
+  return (
+    <div className="flex h-dvh w-full overflow-hidden bg-surface lg:bg-transparent">
+      <SideNav active={screen} onNavigate={handleNavigate} />
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar title={SCREEN_TITLE[screen]} mode={mode} onToggleMode={toggleMode} />
-        <main className="relative flex-1 overflow-hidden">
-          <MapScreen onLogTrip={handleLogTrip} />
-        </main>
+
+        {screen === 'map' ? (
+          <main className="relative flex-1 overflow-hidden">
+            <MapScreen onLogTrip={handleLogTrip} />
+          </main>
+        ) : (
+          <main className="flex-1 overflow-y-auto overscroll-contain">
+            <div className="mx-auto w-full max-w-[840px] px-4 pb-6 pt-[18px]">
+              {!isConfigured && <ConfigWarning />}
+
+              {loading && <Spinner label="Lade Einträge…" />}
+
+              {!loading && error && <ErrorPanel message={error} onRetry={reload} />}
+
+              {!loading && !error && screen === 'conditions' && <ConditionsScreen />}
+
+              {!loading && !error && screen === 'list' && (
+                <ListScreen entries={entries} hours={hours} consumption={consumption} onSelect={openDetail} />
+              )}
+
+              {!loading && !error && screen === 'detail' && selected && (
+                <DetailScreen
+                  entry={selected}
+                  hours={hours[selected.id] ?? null}
+                  hoursSinceStart={hoursSinceStart(selected, entries)}
+                  consumptionLh={consumption[selected.id] ?? null}
+                  onBack={() => setScreen('list')}
+                  onEdit={() => openEdit(selected)}
+                  onDelete={() => handleDelete(selected)}
+                />
+              )}
+
+              {!loading && !error && screen === 'new' && (
+                <FormScreen
+                  editing={editing}
+                  draft={tripDraft ?? undefined}
+                  lastEngineHours={lastEngineHours}
+                  knownHarbors={knownHarbors}
+                  knownPaidBy={knownPaidBy}
+                  saving={saving}
+                  onCancel={() => {
+                    setEditing(null)
+                    setTripDraft(null)
+                    setScreen(editing ? 'detail' : 'list')
+                  }}
+                  onSubmit={handleSubmit}
+                />
+              )}
+
+              {!loading && !error && screen === 'dash' && <DashboardScreen entries={entries} />}
+            </div>
+          </main>
+        )}
+
         <BottomNav active={screen} onNavigate={handleNavigate} />
       </div>
-    )
-  }
-
-  return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-surface shadow-[var(--shadow)]">
-      <Topbar title={SCREEN_TITLE[screen]} mode={mode} onToggleMode={toggleMode} />
-
-      <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-[18px]">
-        {!isConfigured && <ConfigWarning />}
-
-        {loading && <Spinner label="Lade Einträge…" />}
-
-        {!loading && error && <ErrorPanel message={error} onRetry={reload} />}
-
-        {!loading && !error && screen === 'conditions' && <ConditionsScreen />}
-
-        {!loading && !error && screen === 'list' && (
-          <ListScreen entries={entries} hours={hours} consumption={consumption} onSelect={openDetail} />
-        )}
-
-        {!loading && !error && screen === 'detail' && selected && (
-          <DetailScreen
-            entry={selected}
-            hours={hours[selected.id] ?? null}
-            hoursSinceStart={hoursSinceStart(selected, entries)}
-            consumptionLh={consumption[selected.id] ?? null}
-            onBack={() => setScreen('list')}
-            onEdit={() => openEdit(selected)}
-            onDelete={() => handleDelete(selected)}
-          />
-        )}
-
-        {!loading && !error && screen === 'new' && (
-          <FormScreen
-            editing={editing}
-            draft={tripDraft ?? undefined}
-            lastEngineHours={lastEngineHours}
-            knownHarbors={knownHarbors}
-            knownPaidBy={knownPaidBy}
-            saving={saving}
-            onCancel={() => {
-              setEditing(null)
-              setTripDraft(null)
-              setScreen(editing ? 'detail' : 'list')
-            }}
-            onSubmit={handleSubmit}
-          />
-        )}
-
-        {!loading && !error && screen === 'dash' && <DashboardScreen entries={entries} />}
-      </main>
-
-      <BottomNav active={screen} onNavigate={handleNavigate} />
     </div>
   )
 }

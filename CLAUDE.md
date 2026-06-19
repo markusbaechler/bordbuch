@@ -109,6 +109,16 @@ in `App.tsx`): Wetter / Karte / Bordbuch / Logbuch (Detail/Neu zählen zu „Log
 Untertitel weiterhin Bootsname · Ort. Die Bottom-Nav heisst entsprechend **Wetter · Karte · Bordbuch
 · Logbuch** (+ FAB „Neu") – der frühere „Dashboard"-Tab ist die Bordbuch-Übersicht.
 
+**Responsives Layout (mobile-first):** Das App-Shell in `App.tsx` ist ein flexibler Row-
+Container. **Mobil/Tablet (< `lg`):** Telefon-Spalte + **Bottom-Nav** (`BottomNav`, `lg:hidden`),
+Topbar mit Boot-Untertitel. **Desktop (≥ `lg` = 1024px):** linke **Navigations-Seitenleiste**
+(`SideNav`, `hidden lg:flex`, Marke + Boot + Bereiche + „Neuer Eintrag"); Inhalts-Screens zentriert
+auf angenehme Lesebreite (`max-w-[840px]`), die **Karte full-bleed** über die ganze Restfläche.
+Boot-Untertitel der Topbar ist auf Desktop ausgeblendet (`lg:hidden`, Seitenleiste zeigt ihn). Das
+Nav-Modell ist EINMAL definiert (`src/components/navItems.tsx`: `NAV_ITEMS`, `isNavActive`, Icons)
+und von Bottom-Nav + Seitenleiste geteilt. Bordbuch-Kacheln nutzen Desktop-Breite (`sm:grid-cols-4`
+für Total).
+
 **Farb-Tokens (maritim, KEIN Orange mehr):**
 - Tag: bg `#E6EDF2`, surface `#FFFFFF`, surface-2 `#F2F6F9`, ink `#0A2233`, ink-2 `#52708A`,
   line `#D5E0E8`, **Akzent (Primär/CTA) `#1C5C8C` (Marineblau)**, Wasser/aktiv `#0C7C82` (Teal).
