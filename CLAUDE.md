@@ -84,9 +84,10 @@ Einträge nach `date` aufsteigend sortieren, dann:
      Ø Verbrauch l/h (exakt, OHNE "≈"), Treibstoffkosten CHF, Anzahl Einträge.
    - **(b) Ø pro Jahr**: Ø Stunden/Jahr, Ø Einträge/Jahr, Ø Kosten/Jahr (kleine Box-Reihe).
    - **(c) Pro Jahr**: umschaltbarer Balkenchart (Motor h / Einträge / Treibstoff) über alle
-     Jahre, mit Ø-Linie. Balken antippbar → wählt das Jahr für (d).
-   - **(d) Einzeljahr im Detail**: Jahr per Chips/Balken wählbar → Betriebsstunden
-     (+Δ gegenüber Ø), Einträge, Liter, CHF, ≈ l/h, CHF/h.
+     Jahre, mit Ø-Linie. Der Chart visualisiert nur (Balken bleiben antippbar als Bonus).
+   - **(d) Einzeljahr im Detail**: Jahr per **Dropdown** wählbar (§17, nicht mehr Chips/Balken)
+     → Betriebsstunden (+Δ gegenüber Ø), Einträge, Liter, CHF, ≈ l/h, CHF/h.
+   Reihenfolge/Erweiterung (Tank, Wartung, Reihenfolge) und Boot-Profil siehe **§17**.
 5. Status klar: Spinner, Toast bei Erfolg/Fehler.
 6. **Vor der Abfahrt (Wetter)** – Live-Conditions für Locarno + seeweiter Wetterbericht
    mit Stunden-/Tagesprognose (Details §14). Das ist der **Start-Screen** der App (erster

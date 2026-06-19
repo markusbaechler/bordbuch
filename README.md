@@ -5,7 +5,9 @@ Steuerstand. Alle Daten liegen in einer Google-Tabelle; der Zugriff läuft über
 bestehende Google-Apps-Script-Web-App. Volles CRUD, mehrstufige Auswertung (Tab „Bordbuch"),
 Tag-/Nacht-Modus.
 
-Die App hat vier Bereiche (Bottom-Nav): **Wetter · Karte · Bordbuch · Logbuch** (+ „Neu").
+Die App hat vier Bereiche: **Wetter · Karte · Bordbuch · Logbuch** (+ „Neu"). Das Layout ist
+**voll responsiv** – mobil mit Bottom-Nav, ab Desktop (≥ 1024 px) mit Navigations-Seitenleiste,
+breiterem Inhalt und einer bildschirmfüllenden Karte.
 
 - **Wetter** („Vor der Abfahrt"): Live-Wind/Böen mit Ampel, Seepegel und Wassertemperatur für
   Locarno (mit antippbaren Verlaufs-Diagrammen) **plus** ein seeweiter Wetterbericht mit
@@ -13,13 +15,15 @@ Die App hat vier Bereiche (Bottom-Nav): **Wetter · Karte · Bordbuch · Logbuch
 - **Karte:** interaktive Seekarte des ganzen Lago Maggiore – kuratierte Boots-POIs (Häfen,
   Tankstellen, Ankerplätze, Ausflugsziele …), GPS-Tacho + Fahrtaufzeichnung (→ Logbuch),
   Distanzmessung **auf dem Wasser**, Wetter/Wind über den ganzen See und See-Regeln/Zonen.
-- **Bordbuch:** Auswertung (Total → Ø/Jahr → Pro-Jahr-Chart → Einzeljahr).
-- **Logbuch:** Liste, Detail und Erfassen/Bearbeiten der Fahrten.
+- **Bordbuch:** Tank-/Restreichweite, Volvo-Penta-Service-/Wartungsplan (Süsswasser) und
+  mehrstufige Auswertung (Jahr im Detail → Ø/Jahr → Total). Siehe §7.
+- **Logbuch:** Liste, Detail und Erfassen/Bearbeiten der Fahrten (Jahr-Filter als Dropdown).
 
 Installierbar als **PWA**.
 
-**Stack:** Vite · React · TypeScript · Tailwind CSS v4 · Leaflet (Karte) · PWA · Deploy via
-GitHub Pages. Karten-Kacheln (OpenStreetMap/OpenSeaMap) und Wetter (Open-Meteo) sind keylos.
+**Stack:** Vite · React · TypeScript · Tailwind CSS v4 · Leaflet (Karte) · Vitest (Tests) ·
+PWA · Deploy via GitHub Pages. Karten-Kacheln (OpenStreetMap/OpenSeaMap) und Wetter
+(Open-Meteo) sind keylos.
 
 ---
 
@@ -47,9 +51,14 @@ Die App nutzt diese Umgebungsvariablen (Vite-Konvention `VITE_*`):
 Weitere Skripte:
 
 ```bash
-npm run build     # Production-Build nach dist/
-npm run preview   # gebautes dist/ lokal testen
+npm run build       # Production-Build nach dist/
+npm run preview     # gebautes dist/ lokal testen
+npm test            # Vitest einmalig (reine Logik: calc, geo, route, boat)
+npm run test:watch  # Vitest im Watch-Modus
 ```
+
+> Tests laufen separat (`vitest.config.ts`, node-Env) und sind aus dem Pages-Build
+> ausgeschlossen – `npm run build` bleibt davon unberührt.
 
 ---
 
@@ -192,7 +201,26 @@ Der Tab **„Karte"** zeigt eine interaktive Seekarte für den Lago Maggiore auf
 Quellen-Attribution (© OpenStreetMap / © OpenSeaMap) wird in der Karte angezeigt. Es sind
 keine Keys oder zusätzliche Secrets nötig; die Standortfreigabe erfolgt im Browser.
 
-## 7. Datenmodell & Logik (Kurzfassung)
+## 7. Bordbuch: Tank, Wartung & Auswertung
+
+Das **Boot-Profil** (Regal 2750 Cuddy, Volvo Penta, Bj. 2007, Tank **290 l**) ist zentral in
+`src/lib/boat.ts` hinterlegt (Single Source, auch von der Topbar/Seitenleiste genutzt). Der
+Bordbuch-Tab ist von oben nach unten gegliedert:
+
+- **Tank & Reichweite:** Reichweite einer vollen Tankfüllung (`290 l ÷ Ø-Verbrauch`) sowie eine
+  aktuelle Schätzung seit dem letzten Tankstopp (Annahme: voll getankt) inkl. Füllstandsbalken.
+  Reichweiten werden ehrlich in **Motorstunden** angegeben – das Logbuch speichert keine Distanz
+  oder Geschwindigkeit; sm-Werte sind nur grobe Zusatzschätzungen (~18 kn Marsch, ohne Gewähr).
+- **Auswertung:** **Jahr im Detail** (Jahr per **Dropdown** wählbar, der Balkenchart visualisiert)
+  → **Ø pro Jahr** → **Total** über alle Jahre. Auch das Logbuch nutzt dasselbe Jahr-Dropdown.
+- **Wartung & Service** (zuunterst, aufklappbar, default eingeklappt): Volvo-Penta-Serviceplan auf
+  **Süsswasser**. Der „zuletzt erledigt"-Stand jeder Position ist auf **MM.JJ** setzbar (lokal im
+  Browser gespeichert, kein Backend). Jahresarbeiten werden sonst ab Saisonstart angenommen;
+  mehrjährige Posten (Impeller, Zündkerzen, Balg erneuern …) verlangen ein eigenes Datum, statt
+  fälschlich „erledigt" zu zeigen. Ampel ok/bald/fällig dynamisch gegen Stunden- **und**
+  Monatsintervall. **Richtwerte ohne Gewähr – offizielles Manual massgeblich.**
+
+### Datenmodell & Rechenlogik (Kurzfassung)
 
 Ein Eintrag (`Entry`) entspricht einer Zeile im Tabellenblatt `Logbuch`. `engineHours`
 ist **ein** Zählerstand (Betriebsstundenzähler bei Start), `harborTo` ist Freitext.
@@ -209,5 +237,7 @@ Im Frontend berechnet (nicht gespeichert):
   Einträge, Liter, CHF, ≈ l/h, CHF/h.
 - **Total** über alle Jahre: Σ Stunden, Σ CHF, Σ Liter, Ø l/h (**exakt, ohne ≈**);
   sowie Ø pro Jahr = Total ÷ Anzahl Jahre.
+- **Tank-/Restreichweite & Wartungsfälligkeit** in `src/lib/boat.ts`.
 
-Dashboard in drei Ebenen: Total → Ø/Jahr → Pro-Jahr-Chart (antippbar) → Einzeljahr-Detail.
+Diese reine Logik (`calc.ts`, `geo.ts`, `route.ts`, `boat.ts`) ist mit **Vitest** abgedeckt
+(`npm test`).
