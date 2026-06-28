@@ -18,8 +18,8 @@ export const LOCARNO: Spot = { lat: 46.166, lon: 8.795, hydroStation: "2022" };
 export const ASCONA: Spot = { lat: 46.152, lon: 8.768, hydroStation: "2022" };
 
 // Böen-Schwellen in Knoten für ein Motorboot auf dem See.
-export const GUST_WARN = 16;
-export const GUST_BAD = 27;
+export const GUST_WARN = 22;
+export const GUST_BAD = 32;
 
 // Hochwasser-Referenz Lago Maggiore (Gefahrenstufe 5), m ü.M.
 export const HW_LEVEL_MASL = 195.75;
@@ -98,7 +98,7 @@ export async function fetchWind(spot: Spot = LOCARNO): Promise<WindNow> {
   }
 
   return {
-    windKn, gustKn, beaufort: beaufort(gustKn),
+    windKn, gustKn, beaufort: beaufort(windKn),
     directionDeg, cardinal: cardinal(directionDeg),
     thunder, gustForecast, level, headline, subline,
     localContext: thunder ? null : localContext(directionDeg),
