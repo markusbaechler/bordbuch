@@ -106,6 +106,7 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
   const anchorMarkerRef = useRef<L.Marker | null>(null)
   const anchorCircleRef = useRef<L.Circle | null>(null)
   const driftLineRef = useRef<L.Polyline | null>(null)
+  const hadAnchorRef = useRef(false) // erkennt das „frisch geankert"-Ereignis
   const measuringRef = useRef(false)
   const [ready, setReady] = useState(false)
   const [follow, setFollow] = useState(false)
@@ -136,9 +137,8 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
     setKeepGeoAlive(anchor.watching)
   }, [anchor.watching])
 
-  const [active, setActive] = useState<Set<CategoryKey>>(
-    () => new Set(ACTIVE_CATEGORIES.map((c) => c.key)),
-  )
+  // Default: alle Filter aus (saubere Karte) – POIs werden bewusst zugeschaltet.
+  const [active, setActive] = useState<Set<CategoryKey>>(() => new Set())
 
   // --- Karte initialisieren ---------------------------------------------------
   useEffect(() => {
@@ -151,6 +151,8 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
       attributionControl: true,
     })
     mapRef.current = map
+    // „Leaflet"-Prefix samt Flaggen-Icon entfernen – nur die Karten-Quellen bleiben.
+    map.attributionControl.setPrefix(false)
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -337,8 +339,11 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
       anchorMarkerRef.current = null
       anchorCircleRef.current = null
       driftLineRef.current = null
+      hadAnchorRef.current = false
       return
     }
+    const justDropped = !hadAnchorRef.current
+    hadAnchorRef.current = true
     const pos: L.LatLngTuple = [a.lat, a.lon]
     const color = anchor.status === 'idle' ? RING_COLOR.ok : RING_COLOR[anchor.status]
 
@@ -357,6 +362,11 @@ export function MapScreen({ onLogTrip }: { onLogTrip: (draft: EntryDraft) => voi
       }).addTo(map)
     } else {
       anchorCircleRef.current.setLatLng(pos).setRadius(anchor.radiusM).setStyle({ color, fillColor: color })
+    }
+    // Frisch geankert: auf den Radiuskreis zoomen, damit Boot + Radius sichtbar sind.
+    if (justDropped && anchorCircleRef.current) {
+      setFollow(false)
+      map.fitBounds(anchorCircleRef.current.getBounds(), { padding: [50, 50], maxZoom: 18 })
     }
     const latlngs = anchor.driftTrack.map((p) => [p.lat, p.lon] as L.LatLngTuple)
     if (!driftLineRef.current) {
