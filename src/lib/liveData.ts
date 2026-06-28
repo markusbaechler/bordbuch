@@ -21,6 +21,13 @@ export const ASCONA: Spot = { lat: 46.152, lon: 8.768, hydroStation: "2022" };
 export const GUST_WARN = 22;
 export const GUST_BAD = 32;
 
+// Wettermodell: MeteoSwiss ICON-CH2 (2.1 km, fürs Alpenrelief gebaut). Das
+// `best_match`-Default zieht für längere Horizonte grobe Globalmodelle (ECMWF/
+// GFS), deren Böen über dem engen Talkessel des Lago Maggiore unrealistisch hoch
+// sind (z. B. 14 kn Böe bei 3 kn Mittelwind). CH2 löst das Tal auf und liefert
+// see-taugliche Böen; Horizont (~5 Tage) reicht für Prognose (3 T) und Verlauf (±48 h).
+const WIND_MODEL = "meteoswiss_icon_ch2";
+
 // Hochwasser-Referenz Lago Maggiore (Gefahrenstufe 5), m ü.M.
 export const HW_LEVEL_MASL = 195.75;
 
@@ -64,7 +71,8 @@ export async function fetchWind(spot: Spot = LOCARNO): Promise<WindNow> {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}` +
     `&current=weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m` +
-    `&hourly=wind_gusts_10m,weather_code&forecast_hours=12&wind_speed_unit=kn&timezone=auto`;
+    `&hourly=wind_gusts_10m,weather_code&forecast_hours=12&wind_speed_unit=kn&timezone=auto` +
+    `&models=${WIND_MODEL}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
@@ -141,7 +149,7 @@ export async function fetchWindHistory(spot: Spot = LOCARNO): Promise<WindHistor
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}` +
     `&hourly=wind_speed_10m,wind_gusts_10m&past_days=2&forecast_days=2` +
-    `&wind_speed_unit=kn&timezone=auto`;
+    `&wind_speed_unit=kn&timezone=auto&models=${WIND_MODEL}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
@@ -226,7 +234,7 @@ export async function fetchLakeConditions(): Promise<LakeCondition[]> {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&current=weather_code,temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m` +
-    `&wind_speed_unit=kn&timezone=auto`;
+    `&wind_speed_unit=kn&timezone=auto&models=${WIND_MODEL}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
@@ -277,7 +285,7 @@ export async function fetchLakeForecast(): Promise<LakeForecast> {
     `https://api.open-meteo.com/v1/forecast?latitude=46.05&longitude=8.72` +
     `&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m` +
     `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max` +
-    `&forecast_days=3&wind_speed_unit=kn&timezone=auto`;
+    `&forecast_days=3&wind_speed_unit=kn&timezone=auto&models=${WIND_MODEL}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
