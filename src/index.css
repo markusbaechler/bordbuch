@@ -133,6 +133,21 @@ body {
   }
 }
 
+/* Standort-live-Indikator in der Kopfzeile (pulsierender Teal-Punkt). */
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 55%, transparent);
+  animation: live-dot-pulse 1.8s ease-out infinite;
+}
+@keyframes live-dot-pulse {
+  to {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--teal) 0%, transparent);
+  }
+}
+
 /* Ankerwache: gesetzter Anker als Pin. */
 .anchor-pin {
   display: flex;

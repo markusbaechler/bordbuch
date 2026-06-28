@@ -13,9 +13,45 @@ import {
   fetchLakeConditions,
   fetchLakeForecast,
   weatherEmoji,
+  GUST_WARN,
+  GUST_BAD,
   type LakeCondition,
   type LakeForecast,
 } from '../lib/liveData'
+
+// Pfeilfarbe nach Böen: Teal ruhig, Amber auffrischend, Rot stark.
+function windColor(gustKn: number): string {
+  if (gustKn >= GUST_BAD) return '#D8352A'
+  if (gustKn >= GUST_WARN) return '#E8930C'
+  return 'var(--teal)'
+}
+
+// Windpfeil als SVG: zeigt die Fluss­richtung (woher → wohin), Länge & Strichstärke
+// skalieren mit dem mittleren Wind, die Farbe folgt den Böen. Flaute → Ring.
+function WindArrow({ windKn, gustKn, dirDeg }: { windKn: number; gustKn: number; dirDeg: number }) {
+  if (windKn < 2) {
+    return (
+      <svg width="34" height="28" viewBox="0 0 34 28" aria-hidden className="shrink-0">
+        <circle cx="17" cy="14" r="4" fill="none" stroke="var(--ink-3)" strokeWidth="1.6" />
+      </svg>
+    )
+  }
+  const v = Math.min(windKn, 25)
+  const len = 7 + v * (12 / 25)
+  const sw = 1.6 + v * (1.4 / 25)
+  const color = windColor(gustKn)
+  const top = 14 - len / 2
+  const bot = 14 + len / 2
+  return (
+    <svg width="34" height="28" viewBox="0 0 34 28" aria-hidden className="shrink-0">
+      {/* Default-Pfeil zeigt nach oben (Norden); rotate = Flussrichtung (dir + 180). */}
+      <g transform={`rotate(${dirDeg + 180} 17 14)`} stroke={color} strokeWidth={sw} strokeLinecap="round" fill="none">
+        <line x1="17" y1={bot} x2="17" y2={top} />
+        <path d={`M17 ${top} l-4 5 M17 ${top} l4 5`} />
+      </g>
+    </svg>
+  )
+}
 
 export function WeatherReport({
   conditions: condProp,
@@ -84,11 +120,15 @@ export function WeatherReport({
                 i % 2 ? 'bg-surface-2' : ''
               }`}
             >
-              <span className="w-20 font-semibold text-ink">{c.name}</span>
+              <span className="flex-1 font-semibold text-ink">{c.name}</span>
               <span className="text-[16px]">{weatherEmoji(c.weatherCode)}</span>
               <span className="tabnum w-10 text-right font-mono text-ink">{c.tempC}°</span>
-              <span className="tabnum w-24 text-right font-mono text-ink-2">
-                {cardinal8(c.dirDeg)} {c.windKn}/{c.gustKn} kn
+              <span className="flex items-center gap-1.5">
+                <WindArrow windKn={c.windKn} gustKn={c.gustKn} dirDeg={c.dirDeg} />
+                <span className="tabnum w-14 text-right font-mono leading-tight text-ink-2">
+                  <span className="block">{cardinal8(c.dirDeg)}</span>
+                  <span className="block">{c.windKn}/{c.gustKn} kn</span>
+                </span>
               </span>
               <span className="tabnum w-12 text-right font-mono text-teal">
                 {c.precipMm > 0 ? `${c.precipMm}mm` : '–'}
@@ -99,7 +139,9 @@ export function WeatherReport({
           <div className="px-3 py-3 text-[13px] text-ink-3">Conditions werden geladen…</div>
         )}
       </div>
-      <p className="mb-4 text-[10px] text-ink-3">Wind = Mittel/Böen · letzte Spalte = Niederschlag</p>
+      <p className="mb-4 text-[10px] text-ink-3">
+        Pfeil = Windrichtung & -stärke · Zahlen = Mittel/Böen kn · letzte Spalte = Niederschlag
+      </p>
 
       {/* Stundenprognose */}
       <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">

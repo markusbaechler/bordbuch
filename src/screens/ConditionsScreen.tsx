@@ -4,8 +4,10 @@
 // CSS-Variablen, damit Tag/Nacht automatisch mitziehen. Einzige Ausnahme:
 // die Ampel-Hintergründe warn/bad (gibt es nicht als Token).
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useConditions } from '../hooks/useConditions'
+import { useGeoPosition } from '../hooks/useGeoPosition'
+import { quantLatLon, resolveSpot } from '../lib/spot'
 import {
   GUST_WARN,
   GUST_BAD,
@@ -48,8 +50,20 @@ const AMPEL_BG: Record<WindLevel, string> = {
 }
 
 export function ConditionsScreen() {
-  const c = useConditions(undefined, 15 * 60 * 1000) // alle 15 min auffrischen
+  // Live-GPS (pausiert bei verstecktem Tab → Akku). Liegt die Position auf dem
+  // See, folgt der Wind ihr; sonst Heimathafen Ascona. Auf ~0.01° gerastert,
+  // damit der Spot (und damit der Fetch) nicht bei jedem Fix wechselt.
+  const geo = useGeoPosition(true)
+  const q = quantLatLon(geo.lat, geo.lon)
+  const resolved = useMemo(
+    () => resolveSpot(q?.qlat ?? null, q?.qlon ?? null),
+    [q?.qlat, q?.qlon],
+  )
+
+  const c = useConditions(resolved.spot, 15 * 60 * 1000) // alle 15 min auffrischen
   const [modal, setModal] = useState<ModalKind>(null)
+
+  const prefix = resolved.live ? 'Unterwegs' : 'Vor der Abfahrt'
 
   const stamp = c.fetchedAt
     ? c.fetchedAt.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' })
@@ -57,16 +71,22 @@ export function ConditionsScreen() {
 
   return (
     <div>
-      {/* Kopfzeile + Live-Status */}
+      {/* Kopfzeile + Live-Status (links = Standort live, rechts = Daten-Aktualität) */}
       <div className="mb-3 flex items-baseline justify-between">
         <span
-          className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-2"
+          className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-2"
           style={{ fontFamily: COND }}
         >
-          Vor der Abfahrt · Locarno
+          {prefix} · {resolved.label}
+          {resolved.live && (
+            <span className="flex items-center gap-1" aria-label="Standort live · GPS">
+              <span className="live-dot" />
+              <span className="text-teal">live</span>
+            </span>
+          )}
         </span>
         <span className="tabnum font-mono text-[11px] text-ink-3">
-          {c.loading ? 'lädt…' : c.error ? 'offline' : `live · ${stamp}`}
+          {c.loading ? 'lädt…' : c.error ? 'offline' : stamp}
         </span>
       </div>
 

@@ -15,6 +15,7 @@ export interface Spot {
 }
 
 export const LOCARNO: Spot = { lat: 46.166, lon: 8.795, hydroStation: "2022" };
+export const ASCONA: Spot = { lat: 46.152, lon: 8.768, hydroStation: "2022" };
 
 // Böen-Schwellen in Knoten für ein Motorboot auf dem See.
 export const GUST_WARN = 16;
