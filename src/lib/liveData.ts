@@ -17,9 +17,11 @@ export interface Spot {
 export const LOCARNO: Spot = { lat: 46.166, lon: 8.795, hydroStation: "2022" };
 export const ASCONA: Spot = { lat: 46.152, lon: 8.768, hydroStation: "2022" };
 
-// Böen-Schwellen in Knoten für ein Motorboot auf dem See.
-export const GUST_WARN = 22;
-export const GUST_BAD = 32;
+// Mittelwind-Schwellen in Knoten für ein Motorboot auf dem See. Bewusst auf den
+// MITTELWIND bezogen (nicht Böen): Modell-Böen sind kurze Ausreisser, die man auf
+// dem See so kaum spürt – der Mittelwind bildet die Bedingungen ehrlicher ab.
+export const WIND_WARN = 16; // frische Brise (5 Bft), erste Schaumkronen
+export const WIND_BAD = 22;  // steife Brise (6 Bft), unangenehm fürs Motorboot
 
 // Wettermodell: MeteoSwiss ICON-CH2 (2.1 km, fürs Alpenrelief gebaut). Das
 // `best_match`-Default zieht für längere Horizonte grobe Globalmodelle (ECMWF/
@@ -40,7 +42,8 @@ export interface WindNow {
   directionDeg: number;
   cardinal: string;
   thunder: boolean;       // Gewitter jetzt oder in den nächsten 12 h
-  gustForecast: number[]; // Böen kn, stündlich, nächste 12 h
+  windForecast: number[]; // Mittelwind kn, stündlich, nächste 12 h (Leitgröße)
+  gustForecast: number[]; // Böen kn, stündlich (nur als Nebenwert)
   level: WindLevel;
   headline: string;
   subline: string;
@@ -71,7 +74,7 @@ export async function fetchWind(spot: Spot = LOCARNO): Promise<WindNow> {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}` +
     `&current=weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m` +
-    `&hourly=wind_gusts_10m,weather_code&forecast_hours=12&wind_speed_unit=kn&timezone=auto` +
+    `&hourly=wind_speed_10m,wind_gusts_10m,weather_code&forecast_hours=12&wind_speed_unit=kn&timezone=auto` +
     `&models=${WIND_MODEL}`;
 
   const res = await fetch(url);
@@ -81,20 +84,22 @@ export async function fetchWind(spot: Spot = LOCARNO): Promise<WindNow> {
   const windKn = Math.round(d.current.wind_speed_10m);
   const gustKn = Math.round(d.current.wind_gusts_10m);
   const directionDeg = d.current.wind_direction_10m as number;
+  const windForecast: number[] = (d.hourly?.wind_speed_10m ?? []).slice(0, 12).map(Math.round);
   const gustForecast: number[] = (d.hourly?.wind_gusts_10m ?? []).slice(0, 12).map(Math.round);
   const thunder =
     isThunder(d.current.weather_code) ||
     (d.hourly?.weather_code ?? []).some(isThunder);
 
-  // Ampel: Böen + Gewitter sind ausschlaggebend, nicht der mittlere Wind.
+  // Ampel nach MITTELWIND (+ Gewitter). Böen sind kurze Spitzen und werden
+  // bewusst nicht als Auslöser genommen – sie wirken sonst irreführend „offensiv".
   let level: WindLevel = "good";
   let headline = "Gute Bedingungen";
   let subline = "Ruhiges Fahrwasser";
-  if (gustKn >= GUST_BAD) {
+  if (windKn >= WIND_BAD) {
     level = "bad";
     headline = "Warnung";
-    subline = "Starke Böen — Ausfahrt prüfen";
-  } else if (gustKn >= GUST_WARN) {
+    subline = "Kräftiger Wind — Ausfahrt prüfen";
+  } else if (windKn >= WIND_WARN) {
     level = "warn";
     headline = "Vorsicht";
     subline = "Auffrischender Wind";
@@ -108,7 +113,7 @@ export async function fetchWind(spot: Spot = LOCARNO): Promise<WindNow> {
   return {
     windKn, gustKn, beaufort: beaufort(windKn),
     directionDeg, cardinal: cardinal(directionDeg),
-    thunder, gustForecast, level, headline, subline,
+    thunder, windForecast, gustForecast, level, headline, subline,
     localContext: thunder ? null : localContext(directionDeg),
   };
 }

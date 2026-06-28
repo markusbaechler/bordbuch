@@ -9,8 +9,8 @@ import { useConditions } from '../hooks/useConditions'
 import { useGeoPosition } from '../hooks/useGeoPosition'
 import { quantLatLon, resolveSpot } from '../lib/spot'
 import {
-  GUST_WARN,
-  GUST_BAD,
+  WIND_WARN,
+  WIND_BAD,
   HW_LEVEL_MASL,
   fetchWindHistory,
   fetchLevelHistory,
@@ -130,11 +130,11 @@ export function ConditionsScreen() {
         </div>
       )}
 
-      {/* Böen-Vorschau 12 h */}
-      {c.wind && c.wind.gustForecast.length > 0 && (
+      {/* Wind-Vorschau 12 h (Mittelwind – ruhiger und ehrlicher als Böen) */}
+      {c.wind && c.wind.windForecast.length > 0 && (
         <>
-          <Eyebrow>Böen · nächste 12 h</Eyebrow>
-          <GustChart gusts={c.wind.gustForecast} />
+          <Eyebrow>Wind · nächste 12 h</Eyebrow>
+          <WindChart wind={c.wind.windForecast} />
         </>
       )}
 
@@ -183,7 +183,7 @@ export function ConditionsScreen() {
 
       {/* Verlaufs-Modals */}
       {modal === 'wind' && (
-        <Modal title="Wind & Böen · 48 h" onClose={() => setModal(null)}>
+        <Modal title="Wind · 48 h" onClose={() => setModal(null)}>
           <WindHistory />
         </Modal>
       )}
@@ -285,18 +285,18 @@ function WindHistory() {
   if (!data) return <ChartState loading={loading} error={error} />
 
   const series: ChartSeries[] = [
-    { points: data.times.map((t, i) => ({ x: +t, y: data.gusts[i] })), color: 'var(--accent)', emphasized: true },
+    { points: data.times.map((t, i) => ({ x: +t, y: data.wind[i] })), color: 'var(--accent)', emphasized: true },
   ]
   return (
     <div>
       <LineChart
         series={series}
-        refLine={{ y: GUST_WARN, label: `WARN ${GUST_WARN} kn`, color: '#E8930C' }}
+        refLine={{ y: WIND_WARN, label: `WARN ${WIND_WARN} kn`, color: '#E8930C' }}
         nowX={Date.now()}
         xTicks={timeTicks(data.times)}
         formatY={(v) => `${Math.round(v)}`}
       />
-      <ChartFoot>Böen in kn · −48 h … +48 h · Open-Meteo · „jetzt" markiert</ChartFoot>
+      <ChartFoot>Mittelwind in kn · −48 h … +48 h · Open-Meteo · „jetzt" markiert</ChartFoot>
     </div>
   )
 }
@@ -428,12 +428,12 @@ function Banner({ children }: { children: React.ReactNode }) {
   )
 }
 
-/* ----------------------------- Böen-Chart ----------------------------- */
+/* ----------------------------- Wind-Chart (Mittelwind) ----------------------------- */
 
-function GustChart({ gusts }: { gusts: number[] }) {
-  // Skala bis mindestens GUST_BAD, damit die WARN-Linie sinnvoll sitzt.
-  const max = Math.max(...gusts, GUST_BAD)
-  const warnPct = (GUST_WARN / max) * 100
+function WindChart({ wind }: { wind: number[] }) {
+  // Skala bis mindestens WIND_BAD, damit die WARN-Linie sinnvoll sitzt.
+  const max = Math.max(...wind, WIND_BAD)
+  const warnPct = (WIND_WARN / max) * 100
 
   return (
     <div className="mb-[22px] rounded-2xl border border-line bg-surface-2 px-3.5 pb-3 pt-3.5">
@@ -444,17 +444,17 @@ function GustChart({ gusts }: { gusts: number[] }) {
           style={{ bottom: `${warnPct}%` }}
         >
           <span className="absolute right-0 -top-4 bg-surface-2 px-1 font-mono text-[9px] font-bold text-ink-2">
-            {GUST_WARN} kn
+            {WIND_WARN} kn
           </span>
         </div>
-        {gusts.map((g, i) => {
-          const h = Math.max((g / max) * 100, 3)
-          const color = g >= GUST_BAD ? '#D8352A' : g >= GUST_WARN ? '#E8930C' : 'var(--teal)'
+        {wind.map((w, i) => {
+          const h = Math.max((w / max) * 100, 3)
+          const color = w >= WIND_BAD ? '#D8352A' : w >= WIND_WARN ? '#E8930C' : 'var(--teal)'
           return (
             <div
               key={i}
               className="flex h-full flex-1 flex-col items-center justify-end gap-1"
-              title={`+${i + 1} h: ${g} kn`}
+              title={`+${i + 1} h: ${w} kn`}
             >
               <i className="block w-full max-w-3 rounded-t" style={{ height: `${h}%`, background: color }} />
               <em className="tabnum font-mono text-[8px] not-italic text-ink-3">{i + 1}</em>

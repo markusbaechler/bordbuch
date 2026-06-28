@@ -13,22 +13,23 @@ import {
   fetchLakeConditions,
   fetchLakeForecast,
   weatherEmoji,
-  GUST_WARN,
-  GUST_BAD,
+  WIND_WARN,
+  WIND_BAD,
   type LakeCondition,
   type LakeForecast,
 } from '../lib/liveData'
 
-// Pfeilfarbe nach Böen: Teal ruhig, Amber auffrischend, Rot stark.
-function windColor(gustKn: number): string {
-  if (gustKn >= GUST_BAD) return '#D8352A'
-  if (gustKn >= GUST_WARN) return '#E8930C'
+// Pfeilfarbe nach MITTELWIND: Teal ruhig, Amber auffrischend, Rot kräftig.
+// Böen werden bewusst nicht zur Einfärbung genommen (sonst wirkt alles „offensiv").
+function windColor(windKn: number): string {
+  if (windKn >= WIND_BAD) return '#D8352A'
+  if (windKn >= WIND_WARN) return '#E8930C'
   return 'var(--teal)'
 }
 
 // Windpfeil als SVG: zeigt die Fluss­richtung (woher → wohin), Länge & Strichstärke
-// skalieren mit dem mittleren Wind, die Farbe folgt den Böen. Flaute → Ring.
-function WindArrow({ windKn, gustKn, dirDeg }: { windKn: number; gustKn: number; dirDeg: number }) {
+// skalieren mit dem mittleren Wind, die Farbe folgt ebenfalls dem Mittelwind. Flaute → Ring.
+function WindArrow({ windKn, dirDeg }: { windKn: number; dirDeg: number }) {
   if (windKn < 2) {
     return (
       <svg width="34" height="28" viewBox="0 0 34 28" aria-hidden className="shrink-0">
@@ -39,7 +40,7 @@ function WindArrow({ windKn, gustKn, dirDeg }: { windKn: number; gustKn: number;
   const v = Math.min(windKn, 25)
   const len = 7 + v * (12 / 25)
   const sw = 1.6 + v * (1.4 / 25)
-  const color = windColor(gustKn)
+  const color = windColor(windKn)
   const top = 14 - len / 2
   const bot = 14 + len / 2
   return (
@@ -124,7 +125,7 @@ export function WeatherReport({
               <span className="text-[16px]">{weatherEmoji(c.weatherCode)}</span>
               <span className="tabnum w-10 text-right font-mono text-ink">{c.tempC}°</span>
               <span className="flex items-center gap-1.5">
-                <WindArrow windKn={c.windKn} gustKn={c.gustKn} dirDeg={c.dirDeg} />
+                <WindArrow windKn={c.windKn} dirDeg={c.dirDeg} />
                 <span className="tabnum w-14 text-right font-mono leading-tight text-ink-2">
                   <span className="block">{cardinal8(c.dirDeg)}</span>
                   <span className="block">{c.windKn}/{c.gustKn} kn</span>
